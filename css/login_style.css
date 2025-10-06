@@ -1,0 +1,284 @@
+/* Define Colors based on the mobile app theme */
+:root {
+    --primary-green: #4CAF50; /* Main vibrant green */
+    --dark-green: #388E3C;   /* Slightly darker green for accents */
+    --text-dark: #333333;     /* Main body text */
+    --text-light: #ffffff;   /* White text */
+    --page-bg: #fdfdfd;       /* Off-white/light gray background */
+    --card-bg: #ffffff;      /* Pure white for content cards */
+    --border-light: #e0e0e0; /* Light border for inputs/cards */
+}
+
+/* Global Styles */
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--page-bg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    color: var(--text-dark);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* The overall mobile screen container */
+.container {
+    background-color: var(--card-bg);
+    width: 100%;
+    max-width: 375px; /* Default for mobile/login */
+    min-height: 700px; 
+    border-radius: 30px; 
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1); 
+    overflow: hidden;
+    transition: max-width 0.6s ease-in-out, box-shadow 0.3s ease;
+    position: relative;
+}
+
+/* Specific style for when the profile stage is active (WIDER) */
+.container.profile-active {
+    max-width: 500px; 
+}
+
+/* Top Bar mimicking mobile status bar */
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 25px;
+    font-size: 0.85em;
+    color: var(--text-dark);
+    font-weight: 500;
+    background-color: var(--card-bg);
+    border-bottom: 1px solid var(--border-light);
+    box-shadow: 0 1px 5px rgba(0,0,0,0.05); 
+    z-index: 100;
+    position: relative;
+}
+
+/* Main Header for stage titles */
+.main-header {
+    padding: 25px;
+    text-align: center;
+    background-color: var(--card-bg);
+    position: relative;
+    z-index: 10;
+}
+.main-header h2 {
+    font-size: 1.8em;
+    margin: 0;
+    color: var(--text-dark);
+    font-weight: 700;
+}
+.main-header p {
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 5px;
+}
+
+/* NUTRISCAN Logo/Branding */
+.app-logo {
+    font-size: 1.5em;
+    font-weight: 800; 
+    color: var(--primary-green);
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 30px;
+}
+
+/* Content Area for forms */
+.form-area {
+    background-color: var(--card-bg);
+    padding: 25px;
+}
+
+h3 {
+    font-size: 1.3em;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: 0.9em;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+    width: 100%;
+    padding: 14px 18px; 
+    background-color: #f5f5f5; 
+    border: 1px solid var(--border-light);
+    border-radius: 12px; 
+    box-sizing: border-box;
+    color: var(--text-dark);
+    font-size: 15px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.2);
+    outline: none;
+}
+
+select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24"><path d="M7 10l5 5 5-5z" fill="%234CAF50"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    padding-right: 40px;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 90px;
+}
+
+/* Primary Button Styling */
+button {
+    background-color: var(--primary-green); 
+    color: var(--text-light);
+    padding: 16px 20px; 
+    border: none;
+    border-radius: 12px; 
+    cursor: pointer;
+    width: 100%;
+    font-size: 1.1em;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.1s;
+    margin-top: 25px; 
+    box-shadow: 0 8px 20px rgba(76, 175, 80, 0.25); 
+    letter-spacing: 0.5px;
+}
+
+button:hover {
+    background-color: var(--dark-green);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(76, 175, 80, 0.3);
+}
+
+/* Navigation Buttons */
+.nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.nav-buttons button {
+    width: 50%;
+    margin-top: 0;
+    padding: 14px 15px; 
+    font-size: 1em;
+}
+
+.nav-buttons button.prev {
+    background-color: #e0e0e0; 
+    color: var(--text-dark);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+.nav-buttons button.prev:hover {
+    background-color: #cccccc;
+}
+
+/* Success Message Styling */
+.success-message {
+    text-align: center;
+    padding: 40px 0;
+}
+
+.success-message h3 {
+    color: var(--primary-green);
+    font-size: 1.8em;
+    margin-top: 20px;
+}
+.success-message p {
+    font-size: 1.05em;
+    color: #555;
+    margin-bottom: 30px;
+}
+
+/* Stage Visibility Classes */
+.hidden {
+    display: none;
+    opacity: 0;
+    height: 0; 
+    overflow: hidden;
+    transition: opacity 0.5s ease-in-out, height 0.5s ease-in-out;
+}
+.visible {
+    display: block;
+    opacity: 1;
+    height: auto; 
+    transition: opacity 0.5s ease-in-out, height 0.5s ease-in-out;
+}
+
+/* Profile Sub-sections */
+.profile-subsection {
+    display: none; 
+    padding-bottom: 20px; 
+    animation: fadeIn 0.5s ease-out; 
+}
+.profile-subsection.active {
+    display: block;
+}
+
+/* Animation for sub-sections */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* === Landing Page Specific Styles === */
+#landing-page {
+    text-align: center;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 700px; /* Ensure it fills the container */
+}
+#landing-page .main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 30px;
+}
+#landing-page h2 {
+    font-size: 2.5em;
+    line-height: 1.2;
+    font-weight: 800;
+    color: var(--text-dark);
+    margin-bottom: 15px;
+}
+#landing-page h2 span {
+    color: var(--primary-green);
+}
+#landing-page p.tagline {
+    font-size: 1em;
+    color: #666;
+    margin-bottom: 40px;
+    max-width: 80%;
+}
+#landing-page .get-started-button {
+    margin-top: 0; 
+}
+

@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personalized Food Analytics - Trend Focus</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind to use Inter font and custom colors -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        :root {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom colors for the Ultra Green/Emerald theme */
+        .text-theme-primary { color: #059669; } /* Emerald-600 */
+        .bg-theme-primary { background-color: #059669; }
+        .text-theme-secondary { color: #10B981; } /* Emerald-500 */
+        .text-theme-title { color: #065F46; } /* Dark Emerald for main titles */
+
+        /* Custom green shadows */
+        .shadow-green {
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.1), /* emerald-400 light */
+                        0 2px 4px -2px rgba(16, 185, 129, 0.06);
+        }
+        .shadow-green-lg {
+            box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.15), /* theme-primary medium */
+                        0 4px 6px -4px rgba(5, 150, 105, 0.1);
+        }
+        /* Style for active trend tabs */
+        .trend-tab.active {
+            background-color: #059669; /* Emerald-600 */
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .trend-tab:not(.active):hover {
+            background-color: #D1FAE5; /* Emerald-100 */
+        }
+
+        /* Utility class to convert text color to background color */
+        .text-red-600-bg { background-color: #FEE2E2; } /* Red-100 */
+        .text-emerald-600-bg { background-color: #D1FAE5; } /* Emerald-100 */
+        .text-theme-primary-bg { background-color: #D1FAE5; } /* Emerald-100 */
+        /* Neutral background for zero difference (already defined in Tailwind: bg-gray-100) */
+
+        /* Enhanced KPI card hover effect (Smoother transition) */
+        .kpi-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.15), 
+                        0 4px 6px -4px rgba(5, 150, 105, 0.1);
+            transform: scale(1.01);
+        }
+        .kpi-card {
+            transition: transform 300ms, box-shadow 300ms;
+        }
+    </style>
+</head>
+<!-- Body background is pure white -->
+<body class="bg-white min-h-screen text-gray-800">
+
+    <div id="app" class="p-4 sm:p-8 max-w-7xl mx-auto">
+        <header class="mb-8">
+            <!-- Header Text: text-theme-title -->
+            <h1 class="text-3xl sm:text-4xl font-bold text-theme-title flex items-center">
+                <!-- Icon: text-theme-primary (Emerald) -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mr-3 text-theme-primary">
+                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5.5 17.5 7 18 8c1 1.05 1.48 2.64 1.25 4.54-.38 3.1-.38 8.1-.38 8.1 0 .88-.93 1-2 .76l-1.4-.42c-2.85-.75-7.44-1.35-7.44-1.35z"/>
+                </svg>
+                Personalized Food Analytics
+            </h1>
+            <!-- Subtitle: text-gray-600 -->
+            <p id="timeframe-subtitle" class="text-gray-600 mt-1">Review your 7-day dietary habits and track your total calorie goals.</p>
+        </header>
+
+        <!-- Timeframe Selector -->
+        <div class="mb-8 flex space-x-2 border border-emerald-300 p-1 rounded-lg bg-white shadow-sm max-w-sm">
+            <button id="7-day" onclick="handleTimeframeChange('7-day')" class="timeframe-button px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 bg-theme-primary text-white shadow-md">7-day</button>
+            <button id="30-day" onclick="handleTimeframeChange('30-day')" class="timeframe-button px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 text-gray-700 hover:bg-emerald-200">30-day</button>
+            <button id="90-day" onclick="handleTimeframeChange('90-day')" class="timeframe-button px-4 py-2 text-sm font-medium rounded-md transition-all duration-300 text-gray-700 hover:bg-emerald-200">90-day</button>
+        </div>
+
+        <!-- 1. Key Performance Indicators (KPIs) -->
+        <div id="kpi-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-10">
+            <!-- KPI cards will be injected here by JavaScript -->
+        </div>
+
+        <!-- 2. Trend Chart Section (Full Width) -->
+        <div class="mb-10">
+            <!-- TREND CHART VIEW: Full width container for line chart -->
+            <div class="bg-emerald-50 p-6 rounded-xl shadow-green flex flex-col">
+                <!-- Tabs for Trend View -->
+                <div class="flex space-x-2 mb-4">
+                    <button class="trend-tab px-4 py-2 text-sm font-medium rounded-lg text-gray-700 transition-colors" data-trend="calories" onclick="handleTrendChange('calories', this)">Calories</button>
+                    <button class="trend-tab px-4 py-2 text-sm font-medium rounded-lg text-gray-700 transition-colors" data-trend="protein" onclick="handleTrendChange('protein', this)">Protein</button>
+                    <button class="trend-tab px-4 py-2 text-sm font-medium rounded-lg text-gray-700 transition-colors" data-trend="carbs" onclick="handleTrendChange('carbs', this)">Carbs</button>
+                    <button class="trend-tab px-4 py-2 text-sm font-medium rounded-lg text-gray-700 transition-colors" data-trend="fat" onclick="handleTrendChange('fat', this)">Fat</button>
+                </div>
+
+                <h2 id="line-chart-title" class="text-xl font-semibold text-theme-title mb-4 border-b border-emerald-300 pb-2">
+                    Daily Calorie Consumption Trend (7-day)
+                </h2>
+                <div id="line-chart-container" class="h-64 w-full flex-grow">
+                    <!-- SVG Line Chart will be injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Health Recommendations and Insights (Accent Block) -->
+        <div class="bg-emerald-200 border-l-4 border-emerald-600 p-6 rounded-xl shadow-xl mb-10">
+            <h2 class="text-2xl font-bold text-emerald-900 flex items-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 mr-3">
+                    <polyline points="22 7 13.5 15.5 10.15 12.15 2 20"/><polyline points="15 7 22 7 22 14"/>
+                </svg>
+                Health Insights & Recommendations
+            </h2>
+            <ul id="recommendations-list" class="list-disc pl-6 space-y-3 text-gray-800">
+                <!-- Recommendations will be injected here -->
+            </ul>
+        </div>
+
+        <!-- 4. Detailed Macro Summary - Uses bg-emerald-50 (This section replaces the visualization role of the Pie Chart) -->
+        <div id="macro-summary-container" class="bg-emerald-50 p-6 rounded-xl shadow-green">
+            <h2 class="text-xl font-semibold text-theme-title mb-4 border-b border-emerald-300 pb-2">
+                Average Macronutrient Summary
+            </h2>
+            <div id="macro-summary-details" class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                <!-- Macro averages will be injected here -->
+            </div>
+        </div>
+
+        <!-- Footer: text-gray-500, border-emerald-300 -->
+        <footer class="mt-10 pt-4 border-t border-emerald-300 text-center text-sm text-gray-500">
+            Data displayed based on your logged entries.
+        </footer>
+    </div>
+
+    <script>
+        // --- CONSTANTS ---
+        const MACRO_COLORS = ['#047857', '#0D9488', '#F59E0B']; // Emerald-700 (Protein), Teal-600 (Carbs), Amber-500 (Fat/Calories)
+        const PRIMARY_ACCENT = '#059669'; 
+        // Slate-500 for high contrast goal tracking against all macro colors
+        const GOAL_LINE_COLOR = '#64748B'; 
+
+        const GOALS = {
+            daily_calories: 2200,
+            daily_protein: 165, // grams
+            daily_carbs: 195, // grams
+            daily_fat: 85, // grams
+            daily_sodium: 2300, // mg
+            daily_fiber: 25, // g
+            
+            '7-day': { calories: 15400, sodium: 16100, fiber: 175 },
+            '30-day': { calories: 66000, sodium: 69000, fiber: 750 },
+            '90-day': { calories: 198000, sodium: 207000, fiber: 2250 },
+        };
+        
+        // Consolidated goals for easy KPI rendering and recommendation logic
+        const MICRO_MACRO_GOALS = {
+            calories: { target: GOALS.daily_calories, color: '#F59E0B', unit: 'kcal', label: 'Calories' },
+            protein: { target: GOALS.daily_protein, color: MACRO_COLORS[0], unit: 'g', label: 'Protein' }, 
+            carbs: { target: GOALS.daily_carbs, color: MACRO_COLORS[1], unit: 'g', label: 'Carbohydrates' }, 
+            fat: { target: GOALS.daily_fat, color: MACRO_COLORS[2], unit: 'g', label: 'Fat' },
+            sodium: { target: GOALS.daily_sodium, color: '#EF4444', unit: 'mg', label: 'Sodium' }, 
+            fiber: { target: GOALS.daily_fiber, color: '#10B981', unit: 'g', label: 'Fiber' } 
+        };
+        
+        // --- MOCK DATA (unchanged) ---
+        const mockDailyData = [
+            { date: 'Mon', calories: 2100, protein: 75, fat: 80, carbs: 230, sodium: 3200, fiber: 22 },
+            { date: 'Tue', calories: 1950, protein: 90, fat: 65, carbs: 200, sodium: 2800, fiber: 30 },
+            { date: 'Wed', calories: 2350, protein: 60, fat: 95, carbs: 250, sodium: 3500, fiber: 18 },
+            { date: 'Thu', calories: 1800, protein: 100, fat: 50, carbs: 180, sodium: 2500, fiber: 25 },
+            { date: 'Fri', calories: 2200, protein: 85, fat: 70, carbs: 240, sodium: 3100, fiber: 20 },
+            { date: 'Sat', calories: 2600, protein: 110, fat: 120, carbs: 260, sodium: 4000, fiber: 15 },
+            { date: 'Sun', calories: 2050, protein: 80, fat: 60, carbs: 220, sodium: 2700, fiber: 28 },
+        ];
+        
+        let currentData = mockDailyData;
+        let currentTimeframe = '7-day';
+        let currentTrendView = 'calories'; 
+
+        // --- UTILITY FUNCTIONS ---
+
+        function simulateLongerData(timeframe) {
+            const days = parseInt(timeframe.split('-')[0]);
+            if (days === 7) return mockDailyData;
+
+            const sevenDayAverage = mockDailyData.reduce((acc, day) => ({
+                calories: acc.calories + day.calories,
+                protein: acc.protein + day.protein,
+                fat: acc.fat + day.fat,
+                carbs: acc.carbs + day.carbs,
+                sodium: acc.sodium + day.sodium,
+                fiber: acc.fiber + day.fiber,
+            }), { calories: 0, protein: 0, fat: 0, carbs: 0, sodium: 0, fiber: 0 });
+
+            for (const key in sevenDayAverage) {
+                sevenDayAverage[key] /= 7; 
+            }
+            
+            const simulatedData = [];
+            for (let i = 1; i <= days; i++) {
+                const variance = Math.sin(i * 0.5) * 0.05; 
+                simulatedData.push({
+                    date: `Day ${i}`,
+                    calories: Math.round(sevenDayAverage.calories * (1 + variance)),
+                    protein: Math.round(sevenDayAverage.protein * (1 + variance)),
+                    fat: Math.round(sevenDayAverage.fat * (1 + variance)),
+                    carbs: Math.round(sevenDayAverage.carbs * (1 + variance)),
+                    sodium: Math.round(sevenDayAverage.sodium * (1 + variance)),
+                    fiber: Math.round(sevenDayAverage.fiber * (1 + variance)),
+                });
+            }
+            return simulatedData;
+        }
+
+        // Kept for Macro Summary section
+        function calculateMacroAverages(data) {
+            const totalDays = data.length;
+            if (totalDays === 0) return [];
+
+            const totals = data.reduce((acc, day) => ({
+                protein: acc.protein + day.protein,
+                carbs: acc.carbs + day.carbs,
+                fat: acc.fat + day.fat,
+            }), { protein: 0, carbs: 0, fat: 0 });
+
+            const averages = {
+                Protein: totals.protein / totalDays,
+                Carbs: totals.carbs / totalDays,
+                Fat: totals.fat / totalDays,
+            };
+
+            const totalGrams = averages.Protein + averages.Carbs + averages.Fat;
+
+            return [
+                { name: 'Protein (g)', value: averages.Protein, percent: Math.round((averages.Protein / totalGrams) * 100), color: MACRO_COLORS[0] },
+                { name: 'Carbs (g)', value: averages.Carbs, percent: Math.round((averages.Carbs / totalGrams) * 100), color: MACRO_COLORS[1] },
+                { name: 'Fat (g)', value: averages.Fat, percent: Math.round((averages.Fat / totalGrams) * 100), color: MACRO_COLORS[2] },
+            ].filter(m => !isNaN(m.percent)); 
+        }
+
+        function generateRecommendations(data) {
+            const recs = [];
+            if (data.length === 0) return ['No data to analyze. Start logging your meals!'];
+
+            const avgCals = data.reduce((sum, day) => sum + day.calories, 0) / data.length;
+            const avgProtein = data.reduce((sum, day) => sum + day.protein, 0) / data.length;
+            const avgFat = data.reduce((sum, day) => sum + day.fat, 0) / data.length;
+            const avgSodium = data.reduce((sum, day) => sum + day.sodium, 0) / data.length;
+            const avgFiber = data.reduce((sum, day) => sum + day.fiber, 0) / data.length;
+
+            if (avgCals > GOALS.daily_calories * 1.05) {
+                recs.push('Calorie Intake Alert: Your average intake is above your goal. Focus on portion control.');
+            } else if (avgCals < GOALS.daily_calories * 0.9) {
+                recs.push('Energy Gap: Your intake is slightly low. Ensure you are meeting your minimum energy needs.');
+            }
+            
+            if (avgProtein < GOALS.daily_protein * 0.9) {
+                recs.push(`Protein Low: Your intake of ${Math.round(avgProtein)}g is below the goal of ${GOALS.daily_protein}g. Try adding lean sources.`);
+            }
+            if (avgFat > GOALS.daily_fat * 1.1) {
+                recs.push(`Fat High: Your intake of ${Math.round(avgFat)}g exceeds the goal of ${GOALS.daily_fat}g. Reduce saturated/processed fats.`);
+            }
+
+            if (avgSodium > MICRO_MACRO_GOALS.sodium.target) {
+                recs.push(`Sodium Warning: Your average sodium intake (${Math.round(avgSodium)}mg) exceeds the recommended ${MICRO_MACRO_GOALS.sodium.target}mg.`);
+            }
+
+            if (avgFiber < MICRO_MACRO_GOALS.fiber.target * 0.9) {
+                recs.push(`Fiber Deficiency: Your average fiber intake is low. Increase servings of whole grains, fruits, and vegetables.`);
+            } else {
+                recs.push('Great Job! Your fiber intake is consistent. Keep prioritizing whole foods.');
+            }
+
+            if (recs.length === 0) {
+                recs.push('Analysis Complete: Your intake is well-balanced and meets your targets. Keep up the excellent work!');
+            }
+            return recs;
+        }
+
+        /**
+         * Calculates the difference from the daily goal and returns structured HTML and classes.
+         * Color is now based strictly on the sign of the difference (negative = red, positive = green).
+         * @param {number} value - The average value.
+         * @param {string} goalKey - The key for the goal ('calories', 'protein', etc.).
+         * @returns {object} - Contains HTML, goal text, and classes.
+         */
+        function getGoalDifferenceStatus(value, goalKey) {
+            const goal = MICRO_MACRO_GOALS[goalKey];
+            // Difference: Average - Target Goal
+            const diff = value - goal.target;
+            
+            let colorClass;
+            let icon;
+            const diffAbs = Math.abs(diff);
+            let text;
+            
+            // --- SIMPLIFIED COLOR LOGIC (Per User Request: negative = red, positive = green) ---
+            // Red if difference is negative (average < target)
+            if (diff < 0) {
+                colorClass = 'text-red-600';
+                icon = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12l-7 7-7-7"/><path d="M12 5v14"/></svg>'; // Down arrow
+                text = `-${diffAbs.toLocaleString()}`; 
+            } 
+            // Green if difference is positive (average > target)
+            else if (diff > 0) {
+                colorClass = 'text-emerald-600';
+                icon = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>'; // Up arrow
+                text = `+${diffAbs.toLocaleString()}`;
+            } 
+            // If diff is zero or negligible, default to gray/neutral
+            else {
+                colorClass = 'text-gray-500';
+                icon = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>'; // Hyphen/Neutral line
+                text = `0`; 
+            }
+            
+            // Determine background class based on color (use Tailwind's bg-gray-100 for neutral)
+            const finalBgClass = colorClass === 'text-red-600' ? 'text-red-600-bg' : 
+                                 (colorClass === 'text-emerald-600' ? 'text-emerald-600-bg' : 'bg-gray-100');
+
+
+            const diffHtml = `
+                <div class="flex items-center space-x-2 text-sm font-semibold">
+                    <span class="${colorClass} flex items-center">
+                        ${icon}
+                        ${text}${goal.unit}
+                    </span>
+                    <span class="text-xs text-gray-500">vs daily goal</span>
+                </div>
+            `;
+
+            return {
+                bgClass: finalBgClass,
+                goalText: `Goal: ${goal.target.toLocaleString()}${goal.unit}`,
+                diffHtml: diffHtml,
+            };
+        }
+
+
+        function renderKPICards(data, timeframe) {
+            const totalDays = data.length;
+            const totalCaloriesConsumed = data.reduce((sum, day) => sum + day.calories, 0);
+            
+            const averageCalories = Math.round(data.reduce((sum, day) => sum + day.calories, 0) / totalDays);
+            const averageProtein = Math.round(data.reduce((sum, day) => sum + day.protein, 0) / totalDays);
+            const averageCarbs = Math.round(data.reduce((sum, day) => sum + day.carbs, 0) / totalDays);
+            const averageFat = Math.round(data.reduce((sum, day) => sum + day.fat, 0) / totalDays);
+            const averageSodium = Math.round(data.reduce((sum, day) => sum + day.sodium, 0) / totalDays);
+            const averageFiber = Math.round(data.reduce((sum, day) => sum + day.fiber, 0) / totalDays);
+            
+            const goalData = GOALS[timeframe]; 
+
+            const goalCalDifference = totalCaloriesConsumed - goalData.calories;
+            const goalCalText = goalCalDifference >= 0 
+                ? `+${Math.abs(goalCalDifference).toLocaleString()}` 
+                : `-${Math.abs(goalCalDifference).toLocaleString()}`;
+            
+            // Total Calories Status remains on health-based coloring: negative diff = good (green), positive diff = bad (red)
+            const goalCalStatusColor = goalCalDifference < 0 ? "text-emerald-600" : "text-red-600";
+            const goalCalBgColor = goalCalDifference < 0 ? "text-emerald-600-bg" : "text-red-600-bg";
+
+            
+            const goalCalArrow = goalCalDifference >= 0 
+                ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>' 
+                : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M19 12l-7 7-7-7"/><path d="M12 5v14"/></svg>'; 
+            
+            const progressPercent = Math.min(100, (totalCaloriesConsumed / goalData.calories) * 100);
+
+            const getMacroIcon = (name) => {
+                const icons = {
+                    protein: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 6H3"/><path d="M17 12H3"/><path d="M17 18H3"/><path d="M21 7L18 4L15 7"/><path d="M21 17L18 14L15 17"/></svg>',
+                    carbs: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M10 12h4"/><path d="M8 18h.01"/><path d="M16 18h.01"/><path d="M17 3H7a4 4 0 0 0-4 4v10a4 4 0 0 0 4 4h10a4 4 0 0 0 4-4V7a4 4 0 0 0-4-4z"/></svg>',
+                    fat: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.32 0z"/></svg>',
+                    sodium: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2"/><path d="m20 7-4 4-2-2-4 4-2-2L4 17"/><path d="M16 7h4v4"/></svg>',
+                    fiber: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 0 0 12 22c5 0 8-2 8-5V7c0-1.5-.5-2.5-2-2.5A4.5 4.5 0 0 0 14 6c-1.5 0-2-.5-2-2.5A4.5 4.5 0 0 0 12 1h1.5L13 2c-3.2 0-3.5 1.5-3.5 2.5V7c0 1.5.5 2.5 2 2.5a4.5 4.5 0 0 0 2-1c1.5 0 2 .5 2 2.5v10c0 1.5-.5 2.5-2 2.5A4.5 4.5 0 0 0 7.9 20Z"/></svg>',
+                    calories: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'
+                };
+                return icons[name];
+            };
+
+            // Get difference status for all daily KPIs
+            const calDiffStatus = getGoalDifferenceStatus(averageCalories, 'calories');
+            const proteinDiffStatus = getGoalDifferenceStatus(averageProtein, 'protein');
+            const carbsDiffStatus = getGoalDifferenceStatus(averageCarbs, 'carbs');
+            const fatDiffStatus = getGoalDifferenceStatus(averageFat, 'fat');
+            const sodiumDiffStatus = getGoalDifferenceStatus(averageSodium, 'sodium');
+            const fiberDiffStatus = getGoalDifferenceStatus(averageFiber, 'fiber');
+            
+            const finalKpis = [
+                // 1. Avg. Daily Calories (uses Green if avg > goal, Red if avg < goal)
+                { 
+                    title: "Avg. Daily Calories", 
+                    value: averageCalories.toLocaleString(), 
+                    unit: MICRO_MACRO_GOALS.calories.unit, 
+                    subtext: calDiffStatus.goalText,
+                    bgClass: calDiffStatus.bgClass,
+                    diffHtml: calDiffStatus.diffHtml,
+                    icon: getMacroIcon('calories') 
+                }, 
+                // 2. Total Calorie Goal Status (Uses Health-Based Coloring: negative diff = good/green, positive diff = bad/red)
+                {
+                    title: `Total Goal Status (${timeframe})`,
+                    valueHTML: `
+                        <div class="flex flex-col space-y-1">
+                            <div class="flex items-center justify-between text-2xl font-extrabold text-theme-title">
+                                ${totalCaloriesConsumed.toLocaleString()} 
+                                <span class="text-base font-medium text-gray-500 ml-1">/ ${goalData.calories.toLocaleString()} kcal</span>
+                            </div>
+                            <div class="flex items-center space-x-2 text-sm">
+                                <span class="text-xl font-bold ${goalCalStatusColor} flex items-center">
+                                    ${goalCalArrow} ${goalCalText}
+                                </span>
+                                <span class="text-sm text-gray-500">kcal difference</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-emerald-200 rounded-full h-3 mt-2">
+                            <div class="h-3 rounded-full transition-all duration-700" style="width: ${progressPercent}%; background-color: ${progressPercent > 100 ? '#EF4444' : PRIMARY_ACCENT};"></div>
+                        </div>`,
+                    icon: getMacroIcon('calories'), 
+                    colorClass: "text-theme-primary",
+                    bgClass: "text-theme-primary-bg"
+                },
+                
+                // 3. Avg. Daily Protein
+                { 
+                    title: "Avg. Daily Protein", 
+                    value: averageProtein.toLocaleString(), 
+                    unit: MICRO_MACRO_GOALS.protein.unit, 
+                    subtext: proteinDiffStatus.goalText,
+                    bgClass: proteinDiffStatus.bgClass,
+                    diffHtml: proteinDiffStatus.diffHtml,
+                    icon: getMacroIcon('protein') 
+                },
+                // 4. Avg. Daily Carbs
+                { 
+                    title: "Avg. Daily Carbs", 
+                    value: averageCarbs.toLocaleString(), 
+                    unit: MICRO_MACRO_GOALS.carbs.unit, 
+                    subtext: carbsDiffStatus.goalText,
+                    bgClass: carbsDiffStatus.bgClass,
+                    diffHtml: carbsDiffStatus.diffHtml,
+                    icon: getMacroIcon('carbs') 
+                },
+                // 5. Avg. Daily Fat
+                { 
+                    title: "Avg. Daily Fat", 
+                    value: averageFat.toLocaleString(), 
+                    unit: MICRO_MACRO_GOALS.fat.unit, 
+                    subtext: fatDiffStatus.goalText,
+                    bgClass: fatDiffStatus.bgClass,
+                    diffHtml: fatDiffStatus.diffHtml,
+                    icon: getMacroIcon('fat') 
+                },
+                // 6. Avg. Sodium
+                { 
+                    title: "Avg. Sodium", 
+                    value: averageSodium.toLocaleString(), 
+                    unit: MICRO_MACRO_GOALS.sodium.unit, 
+                    subtext: sodiumDiffStatus.goalText,
+                    bgClass: sodiumDiffStatus.bgClass,
+                    diffHtml: sodiumDiffStatus.diffHtml,
+                    icon: getMacroIcon('sodium') 
+                },
+                // 7. Avg. Fiber
+                { 
+                    title: "Avg. Fiber", 
+                    value: averageFiber.toLocaleString(), 
+                    unit: MICRO_MACRO_GOALS.fiber.unit, 
+                    subtext: fiberDiffStatus.goalText,
+                    bgClass: fiberDiffStatus.bgClass,
+                    diffHtml: fiberDiffStatus.diffHtml,
+                    icon: getMacroIcon('fiber') 
+                },
+            ];
+            
+            const container = document.getElementById('kpi-container');
+            container.innerHTML = finalKpis.map(kpi => `
+                <div class="kpi-card bg-white p-6 rounded-xl shadow-green flex flex-col space-y-3 transition transform duration-300">
+                    <div class="flex items-start justify-between">
+                        <h3 class="text-sm font-semibold text-gray-600 uppercase">${kpi.title}</h3>
+                        <!-- Enhanced Icon Circle -->
+                        <div class="w-8 h-8 flex items-center justify-center rounded-full ${kpi.bgClass}">
+                            <span class="w-5 h-5 ${kpi.bgClass.includes('red') ? 'text-red-700' : (kpi.bgClass.includes('emerald') ? 'text-emerald-700' : 'text-gray-500')}">${kpi.icon}</span>
+                        </div>
+                    </div>
+                    ${kpi.valueHTML ? kpi.valueHTML : `
+                        <!-- Main Value Display -->
+                        <p class="text-4xl font-extrabold text-theme-title">
+                            ${kpi.value}
+                            <span class="text-base font-medium text-gray-500 ml-1">${kpi.unit}</span>
+                        </p>
+                        <!-- NEW: Difference from Daily Goal -->
+                        ${kpi.diffHtml}
+                        <!-- Goal Text (smaller, secondary info) -->
+                        <p class="text-xs font-semibold text-gray-500 pt-1 border-t border-gray-100">${kpi.subtext}</p>
+                    `}
+                </div>
+            `).join('');
+        }
+
+
+        function renderRecommendations(recommendations) {
+            const list = document.getElementById('recommendations-list');
+            list.innerHTML = recommendations.map(rec => `
+                <li class="text-base leading-relaxed">
+                    <span class="font-medium text-theme-title">${rec.split(':')[0]}:</span>
+                    ${rec.includes(':') ? rec.split(':')[1] : rec}
+                </li>
+            `).join('');
+        }
+
+        function renderMacroSummary(macroAverages) {
+            const details = document.getElementById('macro-summary-details');
+             details.innerHTML = macroAverages.map((macro) => {
+                const macroNameLower = macro.name.split(' ')[0].toLowerCase();
+                const goal = MICRO_MACRO_GOALS[macroNameLower];
+                
+                return `
+                    <div class="p-4 border border-emerald-200 rounded-lg bg-white shadow-sm hover:shadow-md transition duration-300">
+                        <p class="text-xl font-bold" style="color: ${macro.color};">
+                            ${macro.percent}%
+                        </p>
+                        <p class="text-sm text-gray-600">${macro.name.split(' ')[0]} of Total Grams</p>
+                        <p class="text-xs text-gray-500 mt-1">${macro.value.toFixed(1)}g average</p>
+                        <p class="text-xs font-semibold mt-2 text-gray-500">
+                            Daily Target: ${goal.target}${goal.unit}
+                        </p>
+                        <!-- Macro Distribution Bar -->
+                        <div class="w-full h-2 rounded-full mt-3 overflow-hidden" style="background-color: ${macro.color}20;">
+                            <div class="h-2 rounded-full" style="width: ${macro.percent}%; background-color: ${macro.color};"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        /**
+         * Renders the line chart for a specific macro/micro nutrient trend.
+         * @param {Array} data - The daily data array.
+         * @param {string} trendKey - The key to plot ('calories', 'protein', 'carbs', 'fat', etc.).
+         */
+        function renderLineChart(data, trendKey) {
+            const container = document.getElementById('line-chart-container');
+            if (currentTimeframe !== '7-day') {
+                container.innerHTML = `<div class="h-full flex items-center justify-center text-gray-500">Trend data only available for 7-day view. Select "7-day" to see the chart.</div>`;
+                return;
+            }
+
+            const trendConfig = MICRO_MACRO_GOALS[trendKey];
+            const primaryColor = trendConfig.color;
+            const goalValue = trendConfig.target;
+            
+            // Calculate dynamic width based on the parent container
+            const containerDiv = container.closest('.bg-emerald-50'); 
+            // -48 accounts for the 1.5rem (p-6) padding on both sides
+            const svgWidth = containerDiv ? containerDiv.offsetWidth - 48 : 600; 
+            const svgHeight = 256; 
+            
+            const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+            const chartWidth = svgWidth - margin.left - margin.right;
+            const chartHeight = svgHeight - margin.top - margin.bottom;
+            
+            // Collect data points and the goal value for Y-axis scaling
+            const allValues = data.map(d => d[trendKey]).concat(goalValue);
+            const minY = Math.min(...allValues);
+            const maxY = Math.max(...allValues);
+            const padding = (maxY - minY) * 0.15; 
+            const yMin = Math.max(0, minY - padding);
+            const yMax = maxY + padding;
+
+            const xScale = (i) => margin.left + (i / (data.length - 1)) * chartWidth;
+            const yScale = (value) => margin.top + chartHeight - ((value - yMin) / (yMax - yMin)) * chartHeight;
+
+            const trendPoints = data.map((d, i) => `${xScale(i)},${yScale(d[trendKey])}`).join(' ');
+            const goalPoints = data.map((d, i) => `${xScale(i)},${yScale(goalValue)}`).join(' ');
+
+            // X-Axis Labels (Dates)
+            let xLabels = '';
+            data.forEach((d, i) => {
+                const x = xScale(i);
+                xLabels += `<text x="${x}" y="${svgHeight - 10}" fill="#6b7280" font-size="12" text-anchor="middle">${data[i].date}</text>`;
+            });
+
+            // Y-Axis Labels (Values)
+            let yLabels = '';
+            const numTicks = 5;
+            for (let i = 0; i <= numTicks; i++) {
+                const val = Math.round(yMin + (yMax - yMin) * (i / numTicks));
+                const y = yScale(val);
+                // Grid lines
+                yLabels += `<line x1="${margin.left}" y1="${y}" x2="${svgWidth - margin.right}" y2="${y}" stroke="#A7F3D0" stroke-dasharray="3 3"/>`;
+                // Label
+                yLabels += `<text x="${margin.left - 5}" y="${y + 4}" fill="#6b7280" font-size="12" text-anchor="end">${val.toLocaleString()}</text>`;
+            }
+
+            // Construct the SVG
+            container.innerHTML = `
+                <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" preserveAspectRatio="xMidYMid meet">
+                    <!-- Y-Axis Grid Lines and Labels -->
+                    ${yLabels}
+                    
+                    <!-- X-Axis Line -->
+                    <line x1="${margin.left}" y1="${svgHeight - margin.bottom}" x2="${svgWidth - margin.right}" y2="${svgHeight - margin.bottom}" stroke="#6b7280"/>
+                    
+                    <!-- X-Axis Labels -->
+                    ${xLabels}
+
+                    <!-- Trend Line -->
+                    <polyline fill="none" stroke="${primaryColor}" stroke-width="3" points="${trendPoints}" />
+
+                    <!-- Trend Dots -->
+                    ${data.map((d, i) => `<circle cx="${xScale(i)}" cy="${yScale(d[trendKey])}" r="4" fill="${primaryColor}" stroke="#fff" stroke-width="2" />`).join('')}
+
+                    <!-- Goal Line (Slate Blue for universal contrast) -->
+                    <polyline fill="none" stroke="${GOAL_LINE_COLOR}" stroke-width="2" stroke-dasharray="5 5" points="${goalPoints}" />
+
+                    <!-- Legend -->
+                    <g transform="translate(${svgWidth - margin.right - 150}, 10)">
+                        <rect x="0" y="0" width="10" height="10" fill="${primaryColor}" />
+                        <text x="15" y="8" font-size="12" fill="#6b7280">Consumed (${trendConfig.unit})</text>
+                        <rect x="120" y="0" width="10" height="10" fill="${GOAL_LINE_COLOR}" />
+                        <text x="135" y="8" font-size="12" fill="#6b7280">Goal</text>
+                    </g>
+                </svg>
+            `;
+        }
+
+
+        /**
+         * Handles changing the selected trend view tab.
+         */
+        function handleTrendChange(newTrend, buttonElement = null) {
+            currentTrendView = newTrend;
+            const trendConfig = MICRO_MACRO_GOALS[newTrend];
+
+            // 1. Update button styles
+            document.querySelectorAll('.trend-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (buttonElement) {
+                buttonElement.classList.add('active');
+            } else {
+                 // For initial load, manually set the class
+                document.querySelector(`.trend-tab[data-trend="${newTrend}"]`).classList.add('active');
+            }
+            
+            // 2. Update chart title
+            const titleElement = document.getElementById('line-chart-title');
+            titleElement.textContent = `Daily ${trendConfig.label} Consumption Trend (${currentTimeframe})`;
+
+            // 3. Render the specific line chart
+            renderLineChart(currentData, currentTrendView);
+        }
+
+
+        /**
+         * Main function to refresh all dashboard elements
+         */
+        function refreshDashboard(data, timeframe) {
+            const macroAverages = calculateMacroAverages(data);
+            const recommendations = generateRecommendations(data);
+
+            // 1. Render KPIs
+            renderKPICards(data, timeframe);
+
+            // 2. Render Charts (only line chart remains)
+            handleTrendChange(currentTrendView);
+
+            // 3. Render Recommendations
+            renderRecommendations(recommendations);
+            
+            // 4. Render Summary (Now serves as the primary macro distribution visualization)
+            renderMacroSummary(macroAverages);
+
+            // Update subtitle
+            document.getElementById('timeframe-subtitle').textContent = `Review your ${timeframe} dietary habits and track your total calorie goals.`;
+        }
+
+        /**
+         * Handles changing the timeframe (simulated data change)
+         */
+        function handleTimeframeChange(newTimeframe) {
+            currentTimeframe = newTimeframe;
+            
+            // Update button styles 
+            document.querySelectorAll('.timeframe-button').forEach(btn => {
+                if (btn.id === newTimeframe) {
+                    btn.classList.add('bg-theme-primary', 'text-white', 'shadow-md');
+                    btn.classList.remove('text-gray-700', 'hover:bg-emerald-200');
+                } else {
+                    btn.classList.remove('bg-theme-primary', 'text-white', 'shadow-md');
+                    btn.classList.add('text-gray-700', 'hover:bg-emerald-200');
+                }
+            });
+
+            currentData = simulateLongerData(newTimeframe);
+            refreshDashboard(currentData, currentTimeframe);
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            // Re-render charts on resize to ensure full-width responsiveness
+            window.addEventListener('resize', () => {
+                refreshDashboard(currentData, currentTimeframe);
+            }); 
+            // Initialize with '7-day' timeframe and 'calories' trend view
+            handleTimeframeChange('7-day'); 
+            handleTrendChange('calories');
+        };
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- This auth script is crucial to protect the page -->
+    <script src="js/auth.js"></script>
+    <title>NutriDash | Final Version</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Make sure you have a 'style.css' or similar for your dashboard -->
+    <link rel="stylesheet" href="css/dashboard_style.css"> 
+</head>
+<body>
+    <div class="aurora-background"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <!-- Sidebar content -->
+        <div class="sidebar-header">
+            <i class="fa-solid fa-leaf logo-icon"></i>
+            <h2>NutriDash</h2>
+        </div>
+        <nav class="main-nav">
+            <a href="#" class="active"><i class="fa-solid fa-table-columns"></i><span>Dashboard</span></a>
+            <a href="analytics.html"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></a>
+            <a href="#"><i class="fa-solid fa-book-open"></i><span>Recipes</span></a>
+            <a href="#"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="profile-container">
+                <img src="https://i.pravatar.cc/50?img=3" alt="User profile">
+                <div class="profile-details">
+                    <span id="sidebar-username">User</span>
+                    <small>Pro Member</small>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content" id="main-content">
+        <header class="main-header">
+            <button id="sidebar-toggle" class="sidebar-toggle-btn"><i class="fa-solid fa-bars"></i></button>
+            <!-- This greeting will now be updated with data from the database -->
+            <h1 id="dynamic-greeting">Loading...</h1>
+        </header>
+
+        <div class="bento-grid">
+            <div class="card card-progress">
+                <div class="card-header"><h3>Daily Progress</h3></div>
+                <div class="hero-visuals" id="radial-summaries"></div>
+            </div>
+
+            <div class="card card-actions">
+                <button class="scan-button"><i class="fa-solid fa-camera"></i><span>Scan Item</span></button>
+                <div class="quick-actions">
+                    <button class="quick-action-btn"><i class="fa-solid fa-tint"></i><span>Add Water</span></button>
+                    <button class="quick-action-btn"><i class="fa-solid fa-plus"></i><span>Quick Add</span></button>
+                </div>
+            </div>
+            
+            <div class="card card-focus" id="daily-focus-card"></div>
+
+            <div class="card card-log">
+                <div class="card-header">
+                    <h3>Today's Log</h3><a href="#" class="view-all-btn">View All</a>
+                </div>
+                <div class="meal-log-list" id="meal-log-container"></div>
+            </div>
+
+            <div class="card card-chart">
+                <div class="card-header"><h3>Weekly Trend</h3></div>
+                <div class="chart-container">
+                    <canvas id="weekly-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- SCRIPT WITH INTEGRATED FIREBASE LOGIC -->
+    <script type="module">
+        // Import Firebase functions
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // --- 1. INITIALIZE FIREBASE ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO", authDomain: "DEMO", projectId: "DEMO" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // --- MOCK DATA (for charts, until this is also in the database) ---
+        const staticChartData = {
+            summary: {
+                calories: { consumed: 1250, goal: 2000, color: "#27ae60" },
+                protein: { consumed: 40, goal: 120, color: "#2980b9" },
+                carbs: { consumed: 150, goal: 250, color: "#f39c12" },
+            },
+            todaysMeals: [
+                { name: "Oatmeal & Berries", calories: 350, img: "https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=100&auto=format&fit=crop" },
+                { name: "Chicken Salad", calories: 450, img: "https://images.unsplash.com/photo-1551248429-40974013e521?q=80&w=100&auto=format&fit=crop" },
+            ]
+        };
+
+        // --- UI ELEMENT SELECTORS ---
+        const greetingElement = document.getElementById('dynamic-greeting');
+        const sidebarUsernameElement = document.getElementById('sidebar-username');
+
+        // --- 2. AUTHENTICATE AND FETCH DATA ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // User is authenticated
+                const userId = user.uid;
+                
+                // --- 3. BUILD PATH AND READ DOCUMENT ---
+                const userDocRef = doc(db, 'artifacts', appId, 'users', userId, 'profile', 'data');
+                try {
+                    const docSnap = await getDoc(userDocRef);
+
+                    if (docSnap.exists()) {
+                        const userData = docSnap.data();
+                        
+                        // --- 4. UPDATE THE UI WITH FETCHED DATA ---
+                        const userEmail = userData.email || 'User';
+                        const userName = userEmail.split('@')[0]; // Simple way to get a name from email
+
+                        const currentHour = new Date().getHours();
+                        let greeting = "Good Morning";
+                        if (currentHour >= 12 && currentHour < 17) greeting = "Good Afternoon";
+                        if (currentHour >= 17) greeting = "Good Evening";
+
+                        greetingElement.textContent = `${greeting}, ${userName}!`;
+                        sidebarUsernameElement.textContent = userName;
+
+                    } else {
+                        greetingElement.textContent = "Welcome! No profile data found.";
+                    }
+                } catch (error) {
+                    console.error("Error fetching profile:", error);
+                    greetingElement.textContent = "Error loading profile.";
+                }
+
+                // --- 5. RENDER THE REST OF THE DASHBOARD ---
+                // Now that user data is loaded, we can draw the charts and other elements
+                renderDashboardComponents();
+
+            } else {
+                // Handle initial sign-in
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    signInAnonymously(auth);
+                }
+            }
+        });
+
+        // --- ALL YOUR DASHBOARD RENDERING LOGIC ---
+        function renderDashboardComponents() {
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            if(sidebarToggle) {
+                sidebarToggle.addEventListener('click', () => {
+                    document.body.classList.toggle('sidebar-collapsed');
+                });
+            }
+
+            renderRadialProgress();
+            renderFocusCard();
+            renderMealLog();
+            renderChart();
+        }
+
+        function renderRadialProgress() {
+            const radialContainer = document.getElementById('radial-summaries');
+            if (!radialContainer) return;
+            radialContainer.innerHTML = '';
+            for (const key in staticChartData.summary) {
+                const metric = staticChartData.summary[key];
+                const progress = (metric.consumed / metric.goal) * 100;
+                const radialBar = document.createElement('div');
+                radialBar.className = 'radial-progress';
+                radialBar.style.background = `conic-gradient(${metric.color} ${progress}%, rgba(0,0,0,0.05) 0)`;
+                radialBar.innerHTML = `<div class="radial-progress-inner"><span class="radial-progress-text">${metric.consumed}</span><span class="radial-progress-label">${key}</span></div>`;
+                radialContainer.appendChild(radialBar);
+            }
+        }
+
+        function renderFocusCard() {
+            const focusContainer = document.getElementById('daily-focus-card');
+            if (!focusContainer) return;
+            let lowestProgress = { key: 'protein', remaining: 80 }; // Default
+            // (You can add the logic to calculate this dynamically later)
+            focusContainer.innerHTML = `<div class="card-header"><h3>Your Daily Focus</h3></div><p style="margin-bottom: auto;">To stay balanced, prioritize your <strong>${lowestProgress.key}</strong> intake.</p><p style="font-size: 1.5rem; font-weight: 700; color: var(--dark-green);">You need ${lowestProgress.remaining}g more</p>`;
+        }
+
+        function renderMealLog() {
+            const mealLogContainer = document.getElementById('meal-log-container');
+            if (!mealLogContainer) return;
+            mealLogContainer.innerHTML = '';
+            staticChartData.todaysMeals.forEach(meal => {
+                const mealItem = document.createElement('div');
+                mealItem.className = 'meal-item';
+                mealItem.innerHTML = `<div class="meal-item-info"><img src="${meal.img}" alt="${meal.name}"><div><strong>${meal.name}</strong></div></div><span class="meal-item-calories">${meal.calories} kcal</span>`;
+                mealLogContainer.appendChild(mealItem);
+            });
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('weekly-chart')?.getContext('2d');
+            if (ctx) {
+                new Chart(ctx, { /* ... Your full chart configuration ... */ });
+            }
+        }
+    </script>
+</body>
+</html>
+
