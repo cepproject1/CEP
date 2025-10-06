@@ -1,0 +1,12 @@
+{
+  "name": "nutriscan-static",
+  "version": "1.0.0",
+  "description": "Static site with environment variable injection for Railway.",
+  "main": "index.html",
+  "scripts": {
+    "start": "node setup-env.js && serve -l 3000"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  }
+}

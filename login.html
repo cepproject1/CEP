@@ -48,15 +48,10 @@
 
     <!-- Supabase Logic -->
     <script type="module">
-        // --- 1. GET SUPABASE KEYS FROM ENVIRONMENT VARIABLES ---
-        // Railway automatically exposes variables that start with "PUBLIC_"
-        let SUPABASE_URL = window.PUBLIC_SUPABASE_URL;
-        let SUPABASE_ANON_KEY = window.PUBLIC_SUPABASE_ANON_KEY;
-        
-        // --- Local Testing Keys (Now commented out for production) ---
-        // For local testing, you can uncomment these lines and paste your keys.
-        // SUPABASE_URL = 'YOUR_LOCAL_TESTING_URL'; 
-        // SUPABASE_ANON_KEY = 'YOUR_LOCAL_TESTING_KEY';
+        // --- 1. GET SUPABASE KEYS FROM PLACEHOLDERS ---
+        // These placeholders will be replaced by the setup script during deployment.
+        const SUPABASE_URL = '__SUPABASE_URL__';
+        const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
 
         const loginForm = document.getElementById('loginForm');
         const submitBtn = document.getElementById('login-submit-btn');
@@ -65,8 +60,8 @@
         const formTitle = document.getElementById('form-title');
         const formSubtitle = document.getElementById('form-subtitle');
         
-        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-             errorMessageDiv.innerHTML = '<strong>Configuration Error:</strong><br>Supabase keys are not configured. Please add PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY as environment variables in Railway.';
+        if (SUPABASE_URL.startsWith('__')) {
+             errorMessageDiv.innerHTML = '<strong>Configuration Error:</strong><br>Supabase keys are not configured. Please check your environment variables in Railway.';
              submitBtn.disabled = true;
              submitBtn.textContent = 'Configuration Needed';
         } else {
@@ -167,5 +162,4 @@
     </script>
 </body>
 </html>
-```
 
