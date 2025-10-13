@@ -184,8 +184,10 @@
     
     <script type="module">
         // --- 1. INITIALIZE SUPABASE ---
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; 
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        // 🛑 IMPORTANT: REPLACE THESE WITH YOUR ACTUAL SUPABASE CREDENTIALS
+        // You can find these in your Supabase project settings under "API"
+        const SUPABASE_URL = 'https://dueaxivhontzkvsiwcjc.supabase.co'; // e.g., 'https://xyzabc.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1ZWF4aXZob250emt2c2l3Y2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjgwNTcsImV4cCI6MjA3NTM0NDA1N30.oJpcPh6WOOiNBHjXu6H2PZFkLF3wORdffagx9zDMmNk'; // e.g., 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ...'
 
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -448,3 +450,4 @@
     </script>
 </body>
 </html>
+
