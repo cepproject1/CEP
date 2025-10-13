@@ -110,7 +110,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/supabase/dist/umd/supabase.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@latest/dist/mobilenet.min.js"></script>
     
@@ -185,12 +185,78 @@
         }
         
         // --- 4. FOOD ANALYSIS & CAMERA LOGIC ---
-        async function startCamera() { /* ... Function is identical ... */ }
-        function stopCamera() { /* ... Function is identical ... */ }
-        function captureAndAnalyze() { /* ... Function is identical ... */ }
-        async function analyzeImage(imageElement) { /* ... Function is identical ... */ }
-        async function fetchNutritionInfo(foodName) { /* ... Function is identical ... */ }
-        function displayNutritionInfo(product) { /* ... Function is identical ... */ }
+        async function startCamera() {
+            try {
+                if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); }
+                const constraints = { video: { facingMode: 'environment' } };
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                cameraFeed.srcObject = cameraStream;
+                cameraView.style.display = 'block'; uploadView.style.display = 'none';
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                alert("Could not access the camera. Please ensure you have given permission and are using a secure (HTTPS) connection.");
+                switchToUploadView();
+            }
+        }
+        
+        function stopCamera() {
+            if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; }
+        }
+        
+        function captureAndAnalyze() {
+            const context = imageCanvas.getContext('2d');
+            imageCanvas.width = cameraFeed.videoWidth; imageCanvas.height = cameraFeed.videoHeight;
+            context.translate(imageCanvas.width, 0); context.scale(-1, 1);
+            context.drawImage(cameraFeed, 0, 0, imageCanvas.width, imageCanvas.height);
+            const imageDataUrl = imageCanvas.toDataURL('image/jpeg');
+            imagePreview.src = imageDataUrl;
+            stopCamera();
+            switchToUploadView();
+            analyzeImage(imagePreview);
+        }
+
+        async function analyzeImage(imageElement) {
+            if (!foodModel) { alert('AI Model is not loaded yet.'); return; }
+            if (EDAMAM_APP_ID === 'YOUR_EDAMAM_APP_ID' || EDAMAM_APP_KEY === 'YOUR_EDAMAM_APP_KEY') {
+                alert('Please configure your Edamam API credentials in the script first.'); return;
+            }
+            loadingIndicator.style.display = 'block'; loadingIndicator.textContent = '🤖 Analyzing image...';
+            scanResultDiv.style.display = 'none';
+            try {
+                const predictions = await foodModel.classify(imageElement);
+                if (predictions && predictions.length > 0) {
+                    const topResult = predictions[0].className.split(',')[0];
+                    loadingIndicator.textContent = `✅ Identified: ${topResult}. Fetching nutrition...`;
+                    await fetchNutritionInfo(topResult);
+                } else { throw new Error('Could not identify food in the image.'); }
+            } catch (error) {
+                console.error('Error during analysis:', error);
+                loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'block';
+                scanResultDiv.innerHTML = `<p>Sorry, I couldn't identify the food. Please try another picture.</p>`;
+            }
+        }
+
+        async function fetchNutritionInfo(foodName) { 
+            try {
+                const response = await fetch(`https://api.edamam.com/api/food-database/v2/parser?app_id=${EDAMAM_APP_ID}&app_key=${EDAMAM_APP_KEY}&ingr=${encodeURIComponent(foodName)}&nutrition-type=logging`);
+                if (!response.ok) throw new Error('Nutrition API request failed');
+                const data = await response.json();
+                if (data.parsed && data.parsed.length > 0) {
+                    const food = data.parsed[0].food; const nutrients = food.nutrients;
+                    displayNutritionInfo({ name: food.label, calories: nutrients.ENERC_KCAL || 0, protein: nutrients.PROCNT || 0, carbs: nutrients.CHOCDF || 0 });
+                } else { throw new Error(`No nutritional data found for "${foodName}"`); }
+            } catch (error) { console.error('Nutrition Fetch Error:', error); scanResultDiv.innerHTML = `<p>${error.message}. You can still add it manually.</p>`;
+            } finally { loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'block'; }
+        }
+
+        function displayNutritionInfo(product) {
+            scanResultDiv.innerHTML = `<h4>${product.name}</h4><div class="nutrition-facts"><p><strong>Nutrition per serving (approx. 100g):</strong></p><p>Calories: ${product.calories.toFixed(0)} kcal</p><p>Protein: ${product.protein.toFixed(1)} g</p><p>Carbohydrates: ${product.carbs.toFixed(1)} g</p></div><button class="log-food-btn" id="log-scanned-item">Log This Item</button>`;
+            document.getElementById('log-scanned-item').addEventListener('click', async () => {
+                const logButton = document.getElementById('log-scanned-item');
+                logButton.disabled = true; logButton.textContent = 'Logging...';
+                await logFoodItem(product); closeScannerModal();
+            });
+        }
 
         // --- 5. MODAL & EVENT HANDLERS ---
         function openModal(modal) { modal.classList.add('visible'); }
@@ -199,16 +265,33 @@
         function closeScannerModal() { closeModal(scannerModal); stopCamera(); resetScannerModalState(); }
         function openLogModal() { renderFullMealLog(); openModal(logModal); }
         function closeLogModal() { closeModal(logModal); }
-        function resetScannerModalState() { /* ... Function is identical ... */ }
-        function switchToUploadView() { /* ... Function is identical ... */ }
-        function switchToCameraView() { /* ... Function is identical ... */ }
+        function resetScannerModalState() { imagePreview.src = 'https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image'; imageUploader.value = ''; loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'none'; scanResultDiv.innerHTML = ''; }
+        function switchToUploadView() { cameraView.style.display = 'none'; uploadView.style.display = 'block'; stopCamera(); }
+        function switchToCameraView() { cameraView.style.display = 'block'; uploadView.style.display = 'none'; startCamera(); }
         
         // --- 6. DASHBOARD LOGIC AND RENDERING ---
-        async function logFoodItem(item) { /* ... Function is identical ... */ }
-        async function handleQuickAdd() { /* ... Function is identical ... */ }
-        async function handleAddWater() { /* ... Function is identical ... */ }
+        async function logFoodItem(item) { 
+            const { data: { user } } = await db.auth.getUser(); if (!user) { alert("You must be logged in."); return; } 
+            try { const { error } = await db.from('food_log').insert([{ user_id: user.id, name: item.name, calories: Math.round(item.calories), protein: Math.round(item.protein), carbs: Math.round(item.carbs) }]); 
+            if (error) throw error; await loadDashboardData(user); } catch (error) { console.error("Error logging food:", error); alert("Failed to log food."); } 
+        }
+
+        async function handleQuickAdd() { 
+            const name = prompt("Enter food name:"); if (!name) return; 
+            const calories = parseInt(prompt("Enter calories:"), 10), protein = parseInt(prompt("Enter protein (g):"), 10), carbs = parseInt(prompt("Enter carbs (g):"), 10); 
+            if (isNaN(calories) || isNaN(protein) || isNaN(carbs)) { return alert("Please enter valid numbers."); } 
+            await logFoodItem({ name, calories, protein, carbs }); 
+        }
+
+        async function handleAddWater() { await logFoodItem({ name: "Water (250ml)", calories: 0, protein: 0, carbs: 0 }); }
         
-        function updateGreeting(userName, avatarUrl) { /* ... Function is identical ... */ }
+        function updateGreeting(userName, avatarUrl) { 
+            const currentHour = new Date().getHours(); let greeting = "Good Morning";
+            if (currentHour >= 12 && currentHour < 17) greeting = "Good Afternoon"; if (currentHour >= 17) greeting = "Good Evening";
+            greetingElement.textContent = `${greeting}, ${userName}!`; 
+            sidebarUsernameElement.textContent = userName;
+            if (avatarUrl) { sidebarAvatar.src = avatarUrl; }
+        }
 
         function calculateDailySummary(logs) { 
             dailySummary.calories.consumed = 0; dailySummary.protein.consumed = 0; dailySummary.carbs.consumed = 0;
@@ -225,11 +308,45 @@
             console.log('📊 Calculated Daily Summary:', dailySummary);
         }
         
-        function renderDashboardComponents(logs) { renderRadialProgress(); renderFocusCard(); renderMealLog(logs); }
+        function renderDashboardComponents(logs) { 
+            renderRadialProgress(); 
+            renderFocusCard(); 
+            renderMealLog(logs); 
+        }
 
-        function renderRadialProgress() { /* ... Function is identical ... */ }
-        function renderFocusCard() { /* ... Function is identical ... */ }
-        function renderMealLog(logs) { /* ... Function is identical ... */ }
+        function renderRadialProgress() { 
+            if (!radialContainer) return; radialContainer.innerHTML = ''; 
+            const colors = { calories: "#27ae60", protein: "#2980b9", carbs: "#f39c12" }; 
+            for (const key in dailySummary) { 
+                const metric = dailySummary[key]; 
+                const progress = dailySummary.goal > 0 ? Math.min((metric.consumed / metric.goal) * 100, 100) : 0;
+                const radialBar = document.createElement('div'); radialBar.className = 'radial-progress';
+                radialBar.style.background = `conic-gradient(${colors[key]} ${progress}%, rgba(0,0,0,0.05) 0)`;
+                radialBar.innerHTML = `<div class="radial-progress-inner"><span class="radial-progress-text">${metric.consumed}</span><span class="radial-progress-label">${key}</span></div>`;
+                radialContainer.appendChild(radialBar);
+            }
+        }
+
+        function renderFocusCard() { 
+            if (!focusContainer) return; let lowestProgress = Infinity; let focusMetric = 'calories';
+            for (const key in dailySummary) { 
+                const metric = dailySummary[key]; 
+                const progress = (metric.goal > 0) ? (metric.consumed / metric.goal) : 1;
+                if (progress < lowestProgress) { lowestProgress = progress; focusMetric = key; }
+            }
+            const remaining = Math.max(0, (dailySummary[focusMetric].goal || 0) - dailySummary[focusMetric].consumed);
+            focusContainer.innerHTML = `<div class="card-header"><h3>Your Daily Focus</h3></div><p style="margin-bottom: auto;">To stay balanced, prioritize your <strong>${focusMetric}</strong> intake.</p><p style="font-size: 1.5rem; font-weight: 700; color: var(--dark-green);">You need ${remaining}g more</p>`;
+        }
+
+        function renderMealLog(logs) { 
+            if (!mealLogContainer) return; mealLogContainer.innerHTML = '';
+            if (logs.length === 0) { mealLogContainer.innerHTML = '<p style="text-align: center; color: #777;">No meals logged yet today.</p>'; return; }
+            logs.slice(0, 4).forEach(meal => {
+                const mealItem = document.createElement('div'); mealItem.className = 'meal-item';
+                mealItem.innerHTML = `<div class="meal-item-info"><i class="fa-solid fa-utensils"></i><div><strong>${meal.name}</strong></div></div><span class="meal-item-calories">${meal.calories} kcal</span>`;
+                mealLogContainer.appendChild(mealItem);
+            });
+        }
 
         function renderFullMealLog() {
              if (!fullLogContainer) return; fullLogContainer.innerHTML = '';
@@ -319,24 +436,6 @@
 
         // --- INITIALIZE SCRIPT ---
         loadModel();
-
-        // --- MINIFIED IDENTICAL FUNCTIONS FOR BREVITY ---
-        async function logFoodItem(item) { const { data: { user } } = await db.auth.getUser(); if (!user) { alert("You must be logged in."); return; } try { const { error } = await db.from('food_log').insert([{ user_id: user.id, name: item.name, calories: Math.round(item.calories), protein: Math.round(item.protein), carbs: Math.round(item.carbs) }]); if (error) throw error; await loadDashboardData(user); } catch (error) { console.error("Error logging food:", error); alert("Failed to log food."); } }
-        async function handleQuickAdd() { const name = prompt("Enter food name:"); if (!name) return; const calories = parseInt(prompt("Enter calories:"), 10), protein = parseInt(prompt("Enter protein (g):"), 10), carbs = parseInt(prompt("Enter carbs (g):"), 10); if (isNaN(calories) || isNaN(protein) || isNaN(carbs)) { return alert("Please enter valid numbers."); } await logFoodItem({ name, calories, protein, carbs }); }
-        async function handleAddWater() { await logFoodItem({ name: "Water (250ml)", calories: 0, protein: 0, carbs: 0 }); }
-        function resetScannerModalState() { imagePreview.src = 'https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image'; imageUploader.value = ''; loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'none'; scanResultDiv.innerHTML = ''; }
-        function switchToUploadView() { cameraView.style.display = 'none'; uploadView.style.display = 'block'; stopCamera(); }
-        function switchToCameraView() { cameraView.style.display = 'block'; uploadView.style.display = 'none'; startCamera(); }
-        function updateGreeting(userName, avatarUrl) { const currentHour = new Date().getHours(); let greeting = "Good Morning"; if (currentHour >= 12 && currentHour < 17) greeting = "Good Afternoon"; if (currentHour >= 17) greeting = "Good Evening"; greetingElement.textContent = `${greeting}, ${userName}!`; sidebarUsernameElement.textContent = userName; if (avatarUrl) { sidebarAvatar.src = avatarUrl; } }
-        function renderRadialProgress() { if (!radialContainer) return; radialContainer.innerHTML = ''; const colors = { calories: "#27ae60", protein: "#2980b9", carbs: "#f39c12" }; for (const key in dailySummary) { const metric = dailySummary[key]; const progress = Math.min((metric.consumed / metric.goal) * 100, 100); const radialBar = document.createElement('div'); radialBar.className = 'radial-progress'; radialBar.style.background = `conic-gradient(${colors[key]} ${progress}%, rgba(0,0,0,0.05) 0)`; radialBar.innerHTML = `<div class="radial-progress-inner"><span class="radial-progress-text">${metric.consumed}</span><span class="radial-progress-label">${key}</span></div>`; radialContainer.appendChild(radialBar); } }
-        function renderFocusCard() { if (!focusContainer) return; let lowestProgress = Infinity; let focusMetric = 'calories'; for (const key in dailySummary) { const metric = dailySummary[key]; const progress = (metric.consumed / metric.goal); if (progress < lowestProgress) { lowestProgress = progress; focusMetric = key; } } const remaining = Math.max(0, dailySummary[focusMetric].goal - dailySummary[focusMetric].consumed); focusContainer.innerHTML = `<div class="card-header"><h3>Your Daily Focus</h3></div><p style="margin-bottom: auto;">To stay balanced, prioritize your <strong>${focusMetric}</strong> intake.</p><p style="font-size: 1.5rem; font-weight: 700; color: var(--dark-green);">You need ${remaining}g more</p>`; }
-        function renderMealLog(logs) { if (!mealLogContainer) return; mealLogContainer.innerHTML = ''; if (logs.length === 0) { mealLogContainer.innerHTML = '<p style="text-align: center; color: #777;">No meals logged yet today.</p>'; return; } logs.slice(0, 4).forEach(meal => { const mealItem = document.createElement('div'); mealItem.className = 'meal-item'; mealItem.innerHTML = `<div class="meal-item-info"><i class="fa-solid fa-utensils"></i><div><strong>${meal.name}</strong></div></div><span class="meal-item-calories">${meal.calories} kcal</span>`; mealLogContainer.appendChild(mealItem); }); }
-        async function startCamera() { try { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); } const constraints = { video: { facingMode: 'environment' } }; cameraStream = await navigator.mediaDevices.getUserMedia(constraints); cameraFeed.srcObject = cameraStream; cameraView.style.display = 'block'; uploadView.style.display = 'none'; } catch (err) { console.error("Error accessing camera:", err); alert("Could not access the camera. Please ensure you have given permission and are using a secure (HTTPS) connection."); switchToUploadView(); } }
-        function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; } }
-        function captureAndAnalyze() { const context = imageCanvas.getContext('2d'); imageCanvas.width = cameraFeed.videoWidth; imageCanvas.height = cameraFeed.videoHeight; context.translate(imageCanvas.width, 0); context.scale(-1, 1); context.drawImage(cameraFeed, 0, 0, imageCanvas.width, imageCanvas.height); const imageDataUrl = imageCanvas.toDataURL('image/jpeg'); imagePreview.src = imageDataUrl; stopCamera(); switchToUploadView(); analyzeImage(imagePreview); }
-        async function analyzeImage(imageElement) { if (!foodModel) { alert('AI Model is not loaded yet.'); return; } if (EDAMAM_APP_ID === 'YOUR_EDAMAM_APP_ID' || EDAMAM_APP_KEY === 'YOUR_EDAMAM_APP_KEY') { alert('Please configure your Edamam API credentials in the script first.'); return; } loadingIndicator.style.display = 'block'; loadingIndicator.textContent = '🤖 Analyzing image...'; scanResultDiv.style.display = 'none'; try { const predictions = await foodModel.classify(imageElement); if (predictions && predictions.length > 0) { const topResult = predictions[0].className.split(',')[0]; loadingIndicator.textContent = `✅ Identified: ${topResult}. Fetching nutrition...`; await fetchNutritionInfo(topResult); } else { throw new Error('Could not identify food in the image.'); } } catch (error) { console.error('Error during analysis:', error); loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'block'; scanResultDiv.innerHTML = `<p>Sorry, I couldn't identify the food. Please try another picture.</p>`; } }
-        async function fetchNutritionInfo(foodName) { try { const response = await fetch(`https://api.edamam.com/api/food-database/v2/parser?app_id=${EDAMAM_APP_ID}&app_key=${EDAMAM_APP_KEY}&ingr=${encodeURIComponent(foodName)}&nutrition-type=logging`); if (!response.ok) throw new Error('Nutrition API request failed'); const data = await response.json(); if (data.parsed && data.parsed.length > 0) { const food = data.parsed[0].food; const nutrients = food.nutrients; displayNutritionInfo({ name: food.label, calories: nutrients.ENERC_KCAL || 0, protein: nutrients.PROCNT || 0, carbs: nutrients.CHOCDF || 0 }); } else { throw new Error(`No nutritional data found for "${foodName}"`); } } catch (error) { console.error('Nutrition Fetch Error:', error); scanResultDiv.innerHTML = `<p>${error.message}. You can still add it manually.</p>`; } finally { loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'block'; } }
-        function displayNutritionInfo(product) { scanResultDiv.innerHTML = `<h4>${product.name}</h4><div class="nutrition-facts"><p><strong>Nutrition per serving (approx. 100g):</strong></p><p>Calories: ${product.calories.toFixed(0)} kcal</p><p>Protein: ${product.protein.toFixed(1)} g</p><p>Carbohydrates: ${product.carbs.toFixed(1)} g</p></div><button class="log-food-btn" id="log-scanned-item">Log This Item</button>`; document.getElementById('log-scanned-item').addEventListener('click', async () => { const logButton = document.getElementById('log-scanned-item'); logButton.disabled = true; logButton.textContent = 'Logging...'; await logFoodItem(product); closeScannerModal(); }); }
     </script>
 </body>
 </html>
