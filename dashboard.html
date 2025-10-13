@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="css/dashboard_style.css">
     <style>
-        /* --- Styles for the Scanner Modal --- */
+        /* --- Styles for Modals --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.7); display: flex; align-items: center;
@@ -24,6 +24,7 @@
             background: #fff; padding: 2rem; border-radius: 12px; width: 90%;
             max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             transform: scale(0.9); transition: transform 0.3s;
+            max-height: 80vh; overflow-y: auto;
         }
         .modal-overlay.visible .modal-content { transform: scale(1); }
         .modal-header {
@@ -35,7 +36,7 @@
             background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888;
         }
         
-        /* New Camera and Upload Styles */
+        /* Camera and Upload Styles */
         #camera-view, #upload-view { text-align: center; }
         #camera-feed {
             width: 100%; max-height: 250px; border-radius: 8px;
@@ -53,7 +54,7 @@
         }
         .capture-btn { background-color: #e74c3c; }
         .switch-view-btn { background-color: #95a5a6; }
-        #image-canvas { display: none; } /* Hidden canvas for capturing frames */
+        #image-canvas { display: none; }
 
         #scan-result, #loading-indicator {
             margin-top: 1rem; padding: 1rem; background-color: #f0f4f8;
@@ -78,42 +79,33 @@
         <div class="sidebar-header"><i class="fa-solid fa-leaf logo-icon"></i><h2>NutriDash</h2></div>
         <nav class="main-nav">
             <a href="#" class="active"><i class="fa-solid fa-table-columns"></i><span>Dashboard</span></a>
-            <a href="analytics.html"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></a>
-            <a href="#"><i class="fa-solid fa-book-open"></i><span>Recipes</span></a>
-            <a href="#"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+            <a href="analytics.html" class="nav-link"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></a>
+            <a href="#" class="nav-link"><i class="fa-solid fa-book-open"></i><span>Recipes</span></a>
+            <a href="#" class="nav-link"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
         </nav>
-        <div class="sidebar-footer"><div class="profile-container"><img src="https://i.pravatar.cc/50?img=3" alt="User profile"><div class="profile-details"><span id="sidebar-username">User</span><small>Pro Member</small></div></div></div>
+        <div class="sidebar-footer"><div class="profile-container"><img id="sidebar-avatar" src="https://i.pravatar.cc/50?img=3" alt="User profile"><div class="profile-details"><span id="sidebar-username">User</span><small>Pro Member</small></div></div></div>
     </aside>
 
     <main class="main-content" id="main-content">
         <header class="main-header"><button id="sidebar-toggle" class="sidebar-toggle-btn"><i class="fa-solid fa-bars"></i></button><h1 id="dynamic-greeting">Loading...</h1></header>
-        <div class="bento-grid"><div class="card card-progress"><div class="card-header"><h3>Daily Progress</h3></div><div class="hero-visuals" id="radial-summaries"></div></div><div class="card card-actions"><button class="scan-button" id="scan-item-btn"><i class="fa-solid fa-camera"></i><span id="scan-btn-text">Analyze Food</span></button><div class="quick-actions"><button class="quick-action-btn water-btn"><i class="fa-solid fa-tint"></i><span>Add Water</span></button><button class="quick-action-btn quick-add-btn"><i class="fa-solid fa-plus"></i><span>Quick Add</span></button></div></div><div class="card card-focus" id="daily-focus-card"></div><div class="card card-log"><div class="card-header"><h3>Today's Log</h3><a href="#" class="view-all-btn">View All</a></div><div class="meal-log-list" id="meal-log-container"></div></div><div class="card card-chart"><div class="card-header"><h3>Weekly Trend</h3></div><div class="chart-container"><canvas id="weekly-chart"></canvas></div></div></div>
+        <div class="bento-grid"><div class="card card-progress"><div class="card-header"><h3>Daily Progress</h3></div><div class="hero-visuals" id="radial-summaries"></div></div><div class="card card-actions"><button class="scan-button" id="scan-item-btn"><i class="fa-solid fa-camera"></i><span id="scan-btn-text">Analyze Food</span></button><div class="quick-actions"><button class="quick-action-btn water-btn"><i class="fa-solid fa-tint"></i><span>Add Water</span></button><button class="quick-action-btn quick-add-btn"><i class="fa-solid fa-plus"></i><span>Quick Add</span></button></div></div><div class="card card-focus" id="daily-focus-card"></div><div class="card card-log"><div class="card-header"><h3>Today's Log</h3><a href="#" class="view-all-btn" id="view-all-log-btn">View All</a></div><div class="meal-log-list" id="meal-log-container"></div></div><div class="card card-chart"><div class="card-header"><h3>Weekly Trend</h3></div><div class="chart-container"><canvas id="weekly-chart"></canvas></div></div></div>
     </main>
 
+    <!-- Scanner Modal -->
     <div class="modal-overlay" id="scanner-modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3>Analyze Food Image</h3>
-                <button class="close-modal-btn">&times;</button>
-            </div>
-            <div id="camera-view">
-                <video id="camera-feed" playsinline autoplay muted></video>
-                <canvas id="image-canvas"></canvas>
-                <div class="scanner-controls">
-                    <button id="capture-photo-btn" class="scanner-btn capture-btn"><i class="fa-solid fa-camera"></i> Capture</button>
-                    <button id="switch-to-upload-btn" class="scanner-btn switch-view-btn"><i class="fa-solid fa-upload"></i> Use Upload</button>
-                </div>
-            </div>
-            <div id="upload-view" style="display: none;">
-                <img id="image-preview" src="https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image" alt="Image preview"/>
-                <div class="scanner-controls">
-                     <input type="file" id="image-uploader" accept="image/*" style="display:none;">
-                     <label for="image-uploader" class="scanner-btn"><i class="fa-solid fa-file-image"></i> Select Image</label>
-                    <button id="switch-to-camera-btn" class="scanner-btn switch-view-btn"><i class="fa-solid fa-video"></i> Use Camera</button>
-                </div>
-            </div>
-            <div id="loading-indicator" style="display: none;"></div>
-            <div id="scan-result" style="display: none;"></div>
+            <div class="modal-header"><h3>Analyze Food Image</h3><button class="close-modal-btn">&times;</button></div>
+            <div id="camera-view"><video id="camera-feed" playsinline autoplay muted></video><canvas id="image-canvas"></canvas><div class="scanner-controls"><button id="capture-photo-btn" class="scanner-btn capture-btn"><i class="fa-solid fa-camera"></i> Capture</button><button id="switch-to-upload-btn" class="scanner-btn switch-view-btn"><i class="fa-solid fa-upload"></i> Use Upload</button></div></div>
+            <div id="upload-view" style="display: none;"><img id="image-preview" src="https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image" alt="Image preview"/><div class="scanner-controls"><input type="file" id="image-uploader" accept="image/*" style="display:none;"><label for="image-uploader" class="scanner-btn"><i class="fa-solid fa-file-image"></i> Select Image</label><button id="switch-to-camera-btn" class="scanner-btn switch-view-btn"><i class="fa-solid fa-video"></i> Use Camera</button></div></div>
+            <div id="loading-indicator" style="display: none;"></div><div id="scan-result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Full Log Modal -->
+    <div class="modal-overlay" id="log-modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Today's Full Log</h3><button class="close-modal-btn">&times;</button></div>
+            <div id="full-log-container"></div>
         </div>
     </div>
 
@@ -133,21 +125,16 @@
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // --- UI ELEMENT SELECTORS ---
-        const cameraView = document.getElementById('camera-view');
-        const uploadView = document.getElementById('upload-view');
-        const cameraFeed = document.getElementById('camera-feed');
-        const imageCanvas = document.getElementById('image-canvas');
-        const capturePhotoBtn = document.getElementById('capture-photo-btn');
-        const switchToUploadBtn = document.getElementById('switch-to-upload-btn');
-        const switchToCameraBtn = document.getElementById('switch-to-camera-btn');
-        const greetingElement = document.getElementById('dynamic-greeting'), sidebarUsernameElement = document.getElementById('sidebar-username'), radialContainer = document.getElementById('radial-summaries'), focusContainer = document.getElementById('daily-focus-card'), mealLogContainer = document.getElementById('meal-log-container'), quickAddBtn = document.querySelector('.quick-add-btn'), addWaterBtn = document.querySelector('.water-btn'), scanItemBtn = document.getElementById('scan-item-btn'), scanBtnText = document.getElementById('scan-btn-text'), scannerModal = document.getElementById('scanner-modal'), closeModalBtn = document.querySelector('.close-modal-btn'), imageUploader = document.getElementById('image-uploader'), imagePreview = document.getElementById('image-preview'), loadingIndicator = document.getElementById('loading-indicator'), scanResultDiv = document.getElementById('scan-result');
-
+        const greetingElement = document.getElementById('dynamic-greeting'), sidebarUsernameElement = document.getElementById('sidebar-username'), sidebarAvatar = document.getElementById('sidebar-avatar'), radialContainer = document.getElementById('radial-summaries'), focusContainer = document.getElementById('daily-focus-card'), mealLogContainer = document.getElementById('meal-log-container'), quickAddBtn = document.querySelector('.quick-add-btn'), addWaterBtn = document.querySelector('.water-btn'), scanItemBtn = document.getElementById('scan-item-btn'), scanBtnText = document.getElementById('scan-btn-text'), weeklyChartCanvas = document.getElementById('weekly-chart').getContext('2d'), viewAllLogBtn = document.getElementById('view-all-log-btn');
+        const scannerModal = document.getElementById('scanner-modal'), logModal = document.getElementById('log-modal'), cameraView = document.getElementById('camera-view'), uploadView = document.getElementById('upload-view'), cameraFeed = document.getElementById('camera-feed'), imageCanvas = document.getElementById('image-canvas'), capturePhotoBtn = document.getElementById('capture-photo-btn'), switchToUploadBtn = document.getElementById('switch-to-upload-btn'), switchToCameraBtn = document.getElementById('switch-to-camera-btn'), imageUploader = document.getElementById('image-uploader'), imagePreview = document.getElementById('image-preview'), loadingIndicator = document.getElementById('loading-indicator'), scanResultDiv = document.getElementById('scan-result'), fullLogContainer = document.getElementById('full-log-container');
+        
         // --- GLOBAL STATE ---
-        let userProfile = null, foodModel = null, cameraStream = null;
+        let userProfile = null, foodModel = null, cameraStream = null, weeklyChart = null;
+        let todaysLogs = [];
         let dailySummary = { calories: { consumed: 0, goal: 2000 }, protein: { consumed: 0, goal: 120 }, carbs: { consumed: 0, goal: 250 } };
 
         // --- 2. LOAD AI MODEL ---
-        async function loadModel() { 
+        async function loadModel() {
             scanBtnText.textContent = 'Loading AI Model...'; scanItemBtn.disabled = true;
             try {
                 foodModel = await mobilenet.load({ version: 2, alpha: 1.0, onProgress: (fraction) => { scanBtnText.textContent = `Loading AI (${Math.floor(fraction * 100)}%)...`; }});
@@ -157,16 +144,29 @@
 
         // --- 3. AUTHENTICATION & DATA FETCHING ---
         db.auth.onAuthStateChange(async (event, session) => { if (session) { await loadDashboardData(session.user); } else { window.location.href = '/index.html'; }});
+        
         async function loadDashboardData(user) { 
             if (!user) return;
             try {
-                const { data: profileData, error: profileError } = await db.from('profiles').select('username, daily_calorie_goal, daily_protein_goal, daily_carbs_goal').eq('id', user.id).single();
-                if (profileError && profileError.code !== 'PGRST116') throw profileError; userProfile = profileData;
-                const today = new Date().toISOString().slice(0, 10);
-                const { data: foodData, error: foodError } = await db.from('food_log').select('name, calories, protein, carbs').eq('user_id', user.id).gte('created_at', `${today}T00:00:00.000Z`).lte('created_at', `${today}T23:59:59.999Z`);
+                // Fetch profile
+                const { data: profileData, error: profileError } = await db.from('profiles').select('username, avatar_url, daily_calorie_goal, daily_protein_goal, daily_carbs_goal').eq('id', user.id).single();
+                if (profileError && profileError.code !== 'PGRST116') throw profileError; 
+                userProfile = profileData;
+
+                // Fetch last 7 days of food logs
+                const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+                const { data: foodData, error: foodError } = await db.from('food_log').select('name, calories, protein, carbs, created_at').eq('user_id', user.id).gte('created_at', sevenDaysAgo);
                 if (foodError) throw foodError;
-                updateGreeting(userProfile?.username || user.email.split('@')[0]);
-                calculateDailySummary(foodData); renderDashboardComponents(foodData);
+                
+                // Process data
+                const todayStr = new Date().toISOString().slice(0, 10);
+                todaysLogs = foodData.filter(log => log.created_at.startsWith(todayStr));
+                
+                updateGreeting(userProfile?.username || user.email.split('@')[0], userProfile?.avatar_url);
+                calculateDailySummary(todaysLogs); 
+                renderDashboardComponents(todaysLogs);
+                renderChart(foodData);
+
             } catch (error) { console.error("Error loading dashboard:", error); greetingElement.textContent = "Error loading data."; }
         }
         
@@ -240,72 +240,71 @@
             document.getElementById('log-scanned-item').addEventListener('click', async () => {
                 const logButton = document.getElementById('log-scanned-item');
                 logButton.disabled = true; logButton.textContent = 'Logging...';
-                await logFoodItem(product); closeModal();
+                await logFoodItem(product); closeScannerModal();
             });
         }
 
         // --- 5. MODAL & EVENT HANDLERS ---
-        function openModal() { scannerModal.classList.add('visible'); startCamera(); }
-        function closeModal() { scannerModal.classList.remove('visible'); stopCamera(); resetModalState(); }
-        function resetModalState() {
-            imagePreview.src = 'https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image';
-            imageUploader.value = ''; loadingIndicator.style.display = 'none';
-            scanResultDiv.style.display = 'none'; scanResultDiv.innerHTML = '';
-        }
+        function openModal(modal) { modal.classList.add('visible'); }
+        function closeModal(modal) { modal.classList.remove('visible'); }
+        
+        function openScannerModal() { openModal(scannerModal); startCamera(); }
+        function closeScannerModal() { closeModal(scannerModal); stopCamera(); resetScannerModalState(); }
+        
+        function openLogModal() { renderFullMealLog(); openModal(logModal); }
+        function closeLogModal() { closeModal(logModal); }
+
+        function resetScannerModalState() { imagePreview.src = 'https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image'; imageUploader.value = ''; loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'none'; scanResultDiv.innerHTML = ''; }
         function switchToUploadView() { cameraView.style.display = 'none'; uploadView.style.display = 'block'; stopCamera(); }
         function switchToCameraView() { cameraView.style.display = 'block'; uploadView.style.display = 'none'; startCamera(); }
         
-        imageUploader.addEventListener('change', () => {
-            if (imageUploader.files && imageUploader.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => { imagePreview.src = e.target.result; };
-                reader.readAsDataURL(imageUploader.files[0]);
-                imagePreview.onload = () => analyzeImage(imagePreview);
-            }
-        });
-        
-        scanItemBtn.addEventListener('click', openModal);
-        closeModalBtn.addEventListener('click', closeModal);
-        window.addEventListener('click', (e) => { if (e.target === scannerModal) closeModal(); });
-        capturePhotoBtn.addEventListener('click', captureAndAnalyze);
-        switchToUploadBtn.addEventListener('click', switchToUploadView);
-        switchToCameraBtn.addEventListener('click', switchToCameraView);
-        
         // --- 6. DASHBOARD LOGIC AND RENDERING ---
         async function logFoodItem(item) { 
-            const { data: { user } } = await db.auth.getUser(); if (!user) { alert("You must be logged in."); return; }
-            try { const { error } = await db.from('food_log').insert([{ user_id: user.id, name: item.name, calories: Math.round(item.calories), protein: Math.round(item.protein), carbs: Math.round(item.carbs) }]);
-            if (error) throw error; await loadDashboardData(user); } catch (error) { console.error("Error logging food:", error); alert("Failed to log food."); }
+            const { data: { user } } = await db.auth.getUser(); if (!user) { alert("You must be logged in."); return; } 
+            try { const { error } = await db.from('food_log').insert([{ user_id: user.id, name: item.name, calories: Math.round(item.calories), protein: Math.round(item.protein), carbs: Math.round(item.carbs) }]); 
+            if (error) throw error; await loadDashboardData(user); } catch (error) { console.error("Error logging food:", error); alert("Failed to log food."); } 
         }
+
         async function handleQuickAdd() { 
-            const name = prompt("Enter food name:"); if (!name) return;
-            const calories = parseInt(prompt("Enter calories:"), 10), protein = parseInt(prompt("Enter protein (g):"), 10), carbs = parseInt(prompt("Enter carbs (g):"), 10);
-            if (isNaN(calories) || isNaN(protein) || isNaN(carbs)) { return alert("Please enter valid numbers."); }
-            await logFoodItem({ name, calories, protein, carbs });
+            const name = prompt("Enter food name:"); if (!name) return; 
+            const calories = parseInt(prompt("Enter calories:"), 10), protein = parseInt(prompt("Enter protein (g):"), 10), carbs = parseInt(prompt("Enter carbs (g):"), 10); 
+            if (isNaN(calories) || isNaN(protein) || isNaN(carbs)) { return alert("Please enter valid numbers."); } 
+            await logFoodItem({ name, calories, protein, carbs }); 
         }
+
         async function handleAddWater() { await logFoodItem({ name: "Water (250ml)", calories: 0, protein: 0, carbs: 0 }); }
-        function updateGreeting(userName) { 
+        
+        function updateGreeting(userName, avatarUrl) { 
             const currentHour = new Date().getHours(); let greeting = "Good Morning";
             if (currentHour >= 12 && currentHour < 17) greeting = "Good Afternoon"; if (currentHour >= 17) greeting = "Good Evening";
-            greetingElement.textContent = `${greeting}, ${userName}!`; sidebarUsernameElement.textContent = userName;
+            greetingElement.textContent = `${greeting}, ${userName}!`; 
+            sidebarUsernameElement.textContent = userName;
+            if (avatarUrl) { sidebarAvatar.src = avatarUrl; }
         }
-        function calculateDailySummary(foodLogs) { 
+
+        function calculateDailySummary(logs) { 
             dailySummary.calories.consumed = 0; dailySummary.protein.consumed = 0; dailySummary.carbs.consumed = 0;
             if (userProfile) { 
                 dailySummary.calories.goal = userProfile.daily_calorie_goal; 
                 dailySummary.protein.goal = userProfile.daily_protein_goal; 
                 dailySummary.carbs.goal = userProfile.daily_carbs_goal;
             }
-            foodLogs.forEach(item => { 
+            logs.forEach(item => { 
                 dailySummary.calories.consumed += item.calories; 
                 dailySummary.protein.consumed += item.protein; 
                 dailySummary.carbs.consumed += item.carbs; 
             });
         }
-        function renderDashboardComponents(foodLogs) { renderRadialProgress(); renderFocusCard(); renderMealLog(foodLogs); }
+        
+        function renderDashboardComponents(logs) { 
+            renderRadialProgress(); 
+            renderFocusCard(); 
+            renderMealLog(logs); 
+        }
+
         function renderRadialProgress() { 
-            if (!radialContainer) return; radialContainer.innerHTML = '';
-            const colors = { calories: "#27ae60", protein: "#2980b9", carbs: "#f39c12" };
+            if (!radialContainer) return; radialContainer.innerHTML = ''; 
+            const colors = { calories: "#27ae60", protein: "#2980b9", carbs: "#f39c12" }; 
             for (const key in dailySummary) { 
                 const metric = dailySummary[key]; 
                 const progress = Math.min((metric.consumed / metric.goal) * 100, 100);
@@ -315,6 +314,7 @@
                 radialContainer.appendChild(radialBar);
             }
         }
+
         function renderFocusCard() { 
             if (!focusContainer) return; let lowestProgress = Infinity; let focusMetric = 'calories';
             for (const key in dailySummary) { 
@@ -324,19 +324,83 @@
             const remaining = Math.max(0, dailySummary[focusMetric].goal - dailySummary[focusMetric].consumed);
             focusContainer.innerHTML = `<div class="card-header"><h3>Your Daily Focus</h3></div><p style="margin-bottom: auto;">To stay balanced, prioritize your <strong>${focusMetric}</strong> intake.</p><p style="font-size: 1.5rem; font-weight: 700; color: var(--dark-green);">You need ${remaining}g more</p>`;
         }
-        function renderMealLog(foodLogs) { 
+
+        function renderMealLog(logs) { 
             if (!mealLogContainer) return; mealLogContainer.innerHTML = '';
-            if (foodLogs.length === 0) { mealLogContainer.innerHTML = '<p style="text-align: center; color: #777;">No meals logged yet today.</p>'; return; }
-            foodLogs.slice(0, 5).forEach(meal => {
+            if (logs.length === 0) { mealLogContainer.innerHTML = '<p style="text-align: center; color: #777;">No meals logged yet today.</p>'; return; }
+            logs.slice(0, 4).forEach(meal => {
                 const mealItem = document.createElement('div'); mealItem.className = 'meal-item';
                 mealItem.innerHTML = `<div class="meal-item-info"><i class="fa-solid fa-utensils"></i><div><strong>${meal.name}</strong></div></div><span class="meal-item-calories">${meal.calories} kcal</span>`;
                 mealLogContainer.appendChild(mealItem);
             });
         }
+
+        function renderFullMealLog() {
+            if (!fullLogContainer) return; fullLogContainer.innerHTML = '';
+             if (todaysLogs.length === 0) { fullLogContainer.innerHTML = '<p style="text-align: center; color: #777;">No meals logged yet today.</p>'; return; }
+            todaysLogs.forEach(meal => {
+                const mealItem = document.createElement('div'); mealItem.className = 'meal-item';
+                mealItem.innerHTML = `<div class="meal-item-info"><i class="fa-solid fa-utensils"></i><div><strong>${meal.name}</strong></div></div><span class="meal-item-calories">${meal.calories} kcal</span>`;
+                fullLogContainer.appendChild(mealItem);
+            });
+        }
+
+        function renderChart(foodLogs) {
+            const labels = [];
+            const data = [];
+            const today = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+                const dateStr = date.toISOString().slice(0, 10);
+                const dailyCalories = foodLogs
+                    .filter(log => log.created_at.startsWith(dateStr))
+                    .reduce((sum, log) => sum + log.calories, 0);
+                data.push(dailyCalories);
+            }
+
+            if (weeklyChart) { weeklyChart.destroy(); }
+            weeklyChart = new Chart(weeklyChartCanvas, {
+                type: 'line',
+                data: { labels, datasets: [{
+                    label: 'Calories',
+                    data: data,
+                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                    borderColor: '#27ae60',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
         
+        // --- EVENT LISTENERS ---
         quickAddBtn.addEventListener('click', handleQuickAdd);
         addWaterBtn.addEventListener('click', handleAddWater);
         document.getElementById('sidebar-toggle').addEventListener('click', () => { document.body.classList.toggle('sidebar-collapsed'); });
+        scanItemBtn.addEventListener('click', openScannerModal);
+        scannerModal.querySelector('.close-modal-btn').addEventListener('click', closeScannerModal);
+        logModal.querySelector('.close-modal-btn').addEventListener('click', closeLogModal);
+        viewAllLogBtn.addEventListener('click', (e) => { e.preventDefault(); openLogModal(); });
+        capturePhotoBtn.addEventListener('click', captureAndAnalyze);
+        switchToUploadBtn.addEventListener('click', switchToUploadView);
+        switchToCameraBtn.addEventListener('click', switchToCameraView);
+        imageUploader.addEventListener('change', () => {
+            if (imageUploader.files && imageUploader.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => { imagePreview.src = e.target.result; };
+                reader.readAsDataURL(imageUploader.files[0]);
+                imagePreview.onload = () => analyzeImage(imagePreview);
+            }
+        });
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                alert('This feature is coming soon!');
+            });
+        });
 
         // --- INITIALIZE SCRIPT ---
         loadModel();
