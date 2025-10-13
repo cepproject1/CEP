@@ -255,7 +255,8 @@
             document.getElementById('log-scanned-item').addEventListener('click', async () => {
                 const logButton = document.getElementById('log-scanned-item');
                 logButton.disabled = true; logButton.textContent = 'Logging...';
-                await logFoodItem(product); closeScannerModal();
+                await logFoodItem(product); 
+                closeScannerModal();
             });
         }
 
@@ -272,9 +273,37 @@
         
         // --- 6. DASHBOARD LOGIC AND RENDERING ---
         async function logFoodItem(item) { 
-            const { data: { user } } = await db.auth.getUser(); if (!user) { alert("You must be logged in."); return; } 
-            try { const { error } = await db.from('food_log').insert([{ user_id: user.id, name: item.name, calories: Math.round(item.calories), protein: Math.round(item.protein), carbs: Math.round(item.carbs) }]); 
-            if (error) throw error; await loadDashboardData(user); } catch (error) { console.error("Error logging food:", error); alert("Failed to log food."); } 
+            console.log('Attempting to log item:', item);
+            const { data: { user } } = await db.auth.getUser(); 
+            if (!user) { 
+                alert("You must be logged in to log an item."); 
+                return; 
+            } 
+            
+            // **NEW** Data Validation
+            const name = item.name;
+            const calories = Math.round(item.calories);
+            const protein = Math.round(item.protein);
+            const carbs = Math.round(item.carbs);
+
+            if (!name || isNaN(calories) || isNaN(protein) || isNaN(carbs)) {
+                console.error('❌ Invalid food data. Aborting log.', {name, calories, protein, carbs});
+                alert('Could not log item. The nutritional data received was incomplete. Please try a different item or add it manually.');
+                return;
+            }
+
+            const foodToLog = { user_id: user.id, name, calories, protein, carbs };
+            console.log('✅ Data is valid. Logging to Supabase:', foodToLog);
+
+            try { 
+                const { error } = await db.from('food_log').insert([foodToLog]); 
+                if (error) throw error; 
+                console.log('✅ Item logged successfully.');
+                await loadDashboardData(user); 
+            } catch (error) { 
+                console.error("❌ Error logging food to Supabase:", error); 
+                alert(`Failed to log food: ${error.message}`); 
+            } 
         }
 
         async function handleQuickAdd() { 
@@ -297,9 +326,9 @@
         function calculateDailySummary(logs) { 
             dailySummary.calories.consumed = 0; dailySummary.protein.consumed = 0; dailySummary.carbs.consumed = 0;
             if (userProfile) { 
-                dailySummary.calories.goal = userProfile.daily_calorie_goal; 
-                dailySummary.protein.goal = userProfile.daily_protein_goal; 
-                dailySummary.carbs.goal = userProfile.daily_carbs_goal;
+                dailySummary.calories.goal = userProfile.daily_calorie_goal || 2000; 
+                dailySummary.protein.goal = userProfile.daily_protein_goal || 120; 
+                dailySummary.carbs.goal = userProfile.daily_carbs_goal || 250;
             }
             logs.forEach(item => { 
                 dailySummary.calories.consumed += (item.calories || 0); 
