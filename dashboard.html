@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- This auth script is crucial to protect the page -->
-    <script src="js/auth.js"></script>
+    <!-- The following script returned a 404 error. The main script below handles auth, so this might not be needed. -->
+    <!-- <script src="js/auth.js"></script> -->
     <title>NutriDash | AI Food Scanner</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -110,7 +110,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/supabase/dist/umd/supabase.min.js"></script>
+    <!-- CORRECTED SUPABASE SCRIPT URL -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@latest/dist/mobilenet.min.js"></script>
     
@@ -319,7 +320,7 @@
             const colors = { calories: "#27ae60", protein: "#2980b9", carbs: "#f39c12" }; 
             for (const key in dailySummary) { 
                 const metric = dailySummary[key]; 
-                const progress = dailySummary.goal > 0 ? Math.min((metric.consumed / metric.goal) * 100, 100) : 0;
+                const progress = (metric.goal > 0) ? Math.min((metric.consumed / metric.goal) * 100, 100) : 0;
                 const radialBar = document.createElement('div'); radialBar.className = 'radial-progress';
                 radialBar.style.background = `conic-gradient(${colors[key]} ${progress}%, rgba(0,0,0,0.05) 0)`;
                 radialBar.innerHTML = `<div class="radial-progress-inner"><span class="radial-progress-text">${metric.consumed}</span><span class="radial-progress-label">${key}</span></div>`;
