@@ -5,92 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- This auth script is crucial to protect the page -->
     <script src="js/auth.js"></script>
-    <title>NutriDash | Final Version</title>
+    <title>NutriDash | AI Food Scanner</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <!-- Make sure you have a 'style.css' or similar for your dashboard -->
     <link rel="stylesheet" href="css/dashboard_style.css">
     <style>
         /* --- Styles for the Scanner Modal --- */
         .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); display: flex; align-items: center;
+            justify-content: center; z-index: 1000; opacity: 0; visibility: hidden;
             transition: opacity 0.3s, visibility 0.3s;
         }
-        .modal-overlay.visible {
-            opacity: 1;
-            visibility: visible;
-        }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
         .modal-content {
-            background: #fff;
-            padding: 2rem;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            transform: scale(0.9);
-            transition: transform 0.3s;
+            background: #fff; padding: 2rem; border-radius: 12px; width: 90%;
+            max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transform: scale(0.9); transition: transform 0.3s;
         }
-        .modal-overlay.visible .modal-content {
-            transform: scale(1);
-        }
-        #qr-reader {
-            width: 100%;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #eee;
-        }
+        .modal-overlay.visible .modal-content { transform: scale(1); }
         .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 1rem;
         }
-        .modal-header h3 {
-            margin: 0;
-            font-size: 1.5rem;
-            color: #333;
-        }
+        .modal-header h3 { margin: 0; font-size: 1.5rem; color: #333; }
         .close-modal-btn {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #888;
+            background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888;
+        }
+        #image-upload-container { text-align: center; }
+        #image-preview {
+            max-width: 100%; max-height: 250px; border-radius: 8px;
+            margin-top: 1rem; border: 1px solid #eee;
+        }
+        .upload-btn-wrapper {
+            position: relative; overflow: hidden; display: inline-block;
+            cursor: pointer; background-color: #3498db; color: white;
+            padding: 10px 20px; border-radius: 8px; font-size: 1rem; margin-top: 1rem;
+        }
+        .upload-btn-wrapper input[type=file] {
+            font-size: 100px; position: absolute; left: 0; top: 0;
+            opacity: 0; cursor: pointer;
         }
         #scan-result, #loading-indicator {
-            margin-top: 1rem;
-            padding: 1rem;
-            background-color: #f0f4f8;
-            border-radius: 8px;
+            margin-top: 1rem; padding: 1rem; background-color: #f0f4f8;
+            border-radius: 8px; text-align: center;
         }
-        #scan-result h4 {
-            margin-top: 0;
-        }
-        .nutrition-facts { margin-bottom: 1rem; }
+        #scan-result h4 { margin-top: 0; }
+        .nutrition-facts { margin-bottom: 1rem; text-align: left;}
         .nutrition-facts p { margin: 0.25rem 0; }
         .log-food-btn {
-            width: 100%;
-            padding: 0.75rem;
-            background-color: #27ae60;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
+            width: 100%; padding: 0.75rem; background-color: #27ae60;
+            color: white; border: none; border-radius: 8px; font-size: 1rem;
+            cursor: pointer; transition: background-color 0.2s;
         }
         .log-food-btn:hover { background-color: #2ecc71; }
         .log-food-btn:disabled { background-color: #ccc; cursor: not-allowed; }
@@ -135,7 +103,7 @@
             </div>
 
             <div class="card card-actions">
-                <button class="scan-button"><i class="fa-solid fa-camera"></i><span>Scan Item</span></button>
+                <button class="scan-button" id="scan-item-btn"><i class="fa-solid fa-camera"></i><span id="scan-btn-text">Analyze Food</span></button>
                 <div class="quick-actions">
                     <button class="quick-action-btn water-btn"><i class="fa-solid fa-tint"></i><span>Add Water</span></button>
                     <button class="quick-action-btn quick-add-btn"><i class="fa-solid fa-plus"></i><span>Quick Add</span></button>
@@ -164,30 +132,36 @@
     <div class="modal-overlay" id="scanner-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Scan Barcode</h3>
+                <h3>Analyze Food Image</h3>
                 <button class="close-modal-btn">&times;</button>
             </div>
-            <div id="qr-reader"></div>
-            <div id="loading-indicator" style="display: none;">
-                <p>🔍 Looking up barcode...</p>
+            <div id="image-upload-container">
+                <img id="image-preview" src="https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image" alt="Image preview"/>
+                <div class="upload-btn-wrapper">
+                    <button class="btn">Upload or Take Photo</button>
+                    <input type="file" id="image-uploader" accept="image/*" capture="environment">
+                </div>
             </div>
-            <div id="scan-result" style="display: none;">
-                <!-- Product info will be injected here -->
-            </div>
+            <div id="loading-indicator" style="display: none;"></div>
+            <div id="scan-result" style="display: none;"></div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Barcode Scanner Library -->
-    <script src="https://unpkg.com/html5-qrcode@2.0.9/dist/html5-qrcode.min.js"></script>
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@latest/dist/mobilenet.min.js"></script>
     
     <script type="module">
-        // --- 1. INITIALIZE SUPABASE ---
-        // 🛑 IMPORTANT: REPLACE THESE WITH YOUR ACTUAL SUPABASE CREDENTIALS
-        // You can find these in your Supabase project settings under "API"
-        const SUPABASE_URL = 'https://dueaxivhontzkvsiwcjc.supabase.co'; // e.g., 'https://xyzabc.supabase.co'
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1ZWF4aXZob250emt2c2l3Y2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjgwNTcsImV4cCI6MjA3NTM0NDA1N30.oJpcPh6WOOiNBHjXu6H2PZFkLF3wORdffagx9zDMmNk'; // e.g., 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ...'
+        // --- 1. INITIALIZE SUPABASE & APIs ---
+        // 🛑 IMPORTANT: Replace with your actual Supabase credentials
+        const SUPABASE_URL = 'https://dueaxivhontzkvsiwcjc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1ZWF4aXZob250emt2c2l3Y2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjgwNTcsImV4cCI6MjA3NTM0NDA1N30.oJpcPh6WOOiNBHjXu6H2PZFkLF3wORdffagx9zDMmNk';
+
+        // 🛑 IMPORTANT: Get your free API credentials from https://developer.edamam.com/
+        const EDAMAM_APP_ID = 'f34a397d';
+        const EDAMAM_APP_KEY = 'ee8198f9a60052bec15871ca984bc1fc';
 
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -200,22 +174,41 @@
         const mealLogContainer = document.getElementById('meal-log-container');
         const quickAddBtn = document.querySelector('.quick-add-btn');
         const addWaterBtn = document.querySelector('.water-btn');
-        const scanItemBtn = document.querySelector('.scan-button');
+        const scanItemBtn = document.getElementById('scan-item-btn');
+        const scanBtnText = document.getElementById('scan-btn-text');
         const scannerModal = document.getElementById('scanner-modal');
         const closeModalBtn = document.querySelector('.close-modal-btn');
-        const scanResultDiv = document.getElementById('scan-result');
+        const imageUploader = document.getElementById('image-uploader');
+        const imagePreview = document.getElementById('image-preview');
         const loadingIndicator = document.getElementById('loading-indicator');
+        const scanResultDiv = document.getElementById('scan-result');
 
         // --- GLOBAL STATE ---
         let userProfile = null;
-        let html5QrCode = null;
+        let foodModel = null;
         let dailySummary = {
             calories: { consumed: 0, goal: 2000 },
             protein: { consumed: 0, goal: 120 },
             carbs: { consumed: 0, goal: 250 },
         };
 
-        // --- 2. AUTHENTICATION & DATA FETCHING ---
+        // --- 2. LOAD AI MODEL ---
+        async function loadModel() {
+            scanBtnText.textContent = 'Loading AI Model...';
+            scanItemBtn.disabled = true;
+            try {
+                foodModel = await mobilenet.load();
+                scanBtnText.textContent = 'Analyze Food';
+                scanItemBtn.disabled = false;
+                console.log('Food recognition model loaded successfully.');
+            } catch (error) {
+                console.error('Failed to load AI model:', error);
+                scanBtnText.textContent = 'AI Model Error';
+                alert('Could not load the food recognition model. Please refresh the page.');
+            }
+        }
+
+        // --- 3. AUTHENTICATION & DATA FETCHING ---
         db.auth.onAuthStateChange(async (event, session) => {
             if (session) {
                 await loadDashboardData(session.user);
@@ -256,63 +249,83 @@
             }
         }
         
-        // --- 3. BARCODE SCANNER LOGIC ---
-        function onScanSuccess(decodedText, decodedResult) {
-            html5QrCode.stop().then(() => {
-                scanResultDiv.style.display = 'none';
-                loadingIndicator.style.display = 'block';
-                fetchProductInfo(decodedText);
-            }).catch(err => console.error("Failed to stop scanner", err));
-        }
+        // --- 4. FOOD ANALYSIS LOGIC ---
+        async function analyzeImage() {
+            if (!imageUploader.files || imageUploader.files.length === 0) {
+                return;
+            }
+            if (!foodModel) {
+                alert('AI Model is not loaded yet. Please wait.');
+                return;
+            }
+            if (EDAMAM_APP_ID === 'YOUR_EDAMAM_APP_ID' || EDAMAM_APP_KEY === 'YOUR_EDAMAM_APP_KEY') {
+                alert('Please configure your Edamam API credentials in the script first.');
+                return;
+            }
 
-        async function fetchProductInfo(barcode) {
+            loadingIndicator.style.display = 'block';
+            loadingIndicator.textContent = '🤖 Analyzing image...';
+            scanResultDiv.style.display = 'none';
+
             try {
-                const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-                if (!response.ok) throw new Error('Product not found');
-                const data = await response.json();
-                
-                loadingIndicator.style.display = 'none';
-                
-                if (data.status === 1 && data.product) {
-                    const product = data.product;
-                    const nutrients = product.nutriments;
-                    // Values per 100g, check if they exist
-                    const calories = nutrients['energy-kcal_100g'] || 0;
-                    const protein = nutrients.proteins_100g || 0;
-                    const carbs = nutrients.carbohydrates_100g || 0;
+                const predictions = await foodModel.classify(imagePreview);
+                console.log('Predictions:', predictions);
 
-                    displayProductInfo({
-                        name: product.product_name_en || product.product_name || 'Unknown Product',
-                        barcode,
-                        calories,
-                        protein,
-                        carbs
-                    });
+                if (predictions && predictions.length > 0) {
+                    const topResult = predictions[0].className.split(',')[0]; // Take the most likely food name
+                    loadingIndicator.textContent = `✅ Identified: ${topResult}. Fetching nutrition...`;
+                    await fetchNutritionInfo(topResult);
                 } else {
-                    scanResultDiv.innerHTML = `<p>Product not found for barcode: ${barcode}. Please add it manually.</p>`;
-                    scanResultDiv.style.display = 'block';
+                    throw new Error('Could not identify food in the image.');
                 }
             } catch (error) {
-                console.error("API Error:", error);
+                console.error('Error during analysis:', error);
                 loadingIndicator.style.display = 'none';
-                scanResultDiv.innerHTML = `<p>Could not fetch product info. Please check your connection or add manually.</p>`;
+                scanResultDiv.style.display = 'block';
+                scanResultDiv.innerHTML = `<p>Sorry, I couldn't identify the food. Please try another picture.</p>`;
+            }
+        }
+
+        async function fetchNutritionInfo(foodName) {
+            try {
+                const response = await fetch(`https://api.edamam.com/api/food-database/v2/parser?app_id=${EDAMAM_APP_ID}&app_key=${EDAMAM_APP_KEY}&ingr=${encodeURIComponent(foodName)}&nutrition-type=logging`);
+                if (!response.ok) throw new Error('Nutrition API request failed');
+                
+                const data = await response.json();
+                console.log('Edamam API Response:', data);
+
+                if (data.parsed && data.parsed.length > 0) {
+                    const food = data.parsed[0].food;
+                    const nutrients = food.nutrients;
+                    displayNutritionInfo({
+                        name: food.label,
+                        calories: nutrients.ENERC_KCAL || 0,
+                        protein: nutrients.PROCNT || 0,
+                        carbs: nutrients.CHOCDF || 0,
+                    });
+                } else {
+                    throw new Error(`No nutritional data found for "${foodName}"`);
+                }
+            } catch (error) {
+                console.error('Nutrition Fetch Error:', error);
+                scanResultDiv.innerHTML = `<p>${error.message}. You can still add it manually.</p>`;
+            } finally {
+                loadingIndicator.style.display = 'none';
                 scanResultDiv.style.display = 'block';
             }
         }
 
-        function displayProductInfo(product) {
+        function displayNutritionInfo(product) {
             scanResultDiv.innerHTML = `
                 <h4>${product.name}</h4>
                 <div class="nutrition-facts">
-                    <p><strong>Nutrition per 100g:</strong></p>
-                    <p>Calories: ${product.calories.toFixed(1)} kcal</p>
+                    <p><strong>Nutrition per serving (approx. 100g):</strong></p>
+                    <p>Calories: ${product.calories.toFixed(0)} kcal</p>
                     <p>Protein: ${product.protein.toFixed(1)} g</p>
                     <p>Carbohydrates: ${product.carbs.toFixed(1)} g</p>
                 </div>
                 <button class="log-food-btn" id="log-scanned-item">Log This Item</button>
             `;
-            scanResultDiv.style.display = 'block';
-
             document.getElementById('log-scanned-item').addEventListener('click', async () => {
                 const logButton = document.getElementById('log-scanned-item');
                 logButton.disabled = true;
@@ -321,30 +334,39 @@
                 closeModal();
             });
         }
-        
-        function openModal() {
-            scannerModal.classList.add('visible');
-            html5QrCode = new Html5Qrcode("qr-reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-              .catch(err => {
-                  console.error("Unable to start scanner", err);
-                  scanResultDiv.innerHTML = `<p>Error: Could not access camera. Please grant permission and refresh.</p>`;
-                  scanResultDiv.style.display = 'block';
-              });
-        }
-        
+
+        // --- 5. MODAL & EVENT HANDLERS ---
+        function openModal() { scannerModal.classList.add('visible'); }
         function closeModal() {
-            if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().catch(err => console.log("Scanner already stopped."));
-            }
             scannerModal.classList.remove('visible');
-            scanResultDiv.style.display = 'none';
-            loadingIndicator.style.display = 'none';
-            scanResultDiv.innerHTML = ''; // Clear previous results
+            resetModalState();
         }
+        function resetModalState() {
+            imagePreview.src = 'https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image';
+            imageUploader.value = ''; // Clear file input
+            loadingIndicator.style.display = 'none';
+            scanResultDiv.style.display = 'none';
+            scanResultDiv.innerHTML = '';
+        }
+
+        imageUploader.addEventListener('change', () => {
+            if (imageUploader.files && imageUploader.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreview.onload = () => analyzeImage();
+                };
+                reader.readAsDataURL(imageUploader.files[0]);
+            }
+        });
         
-        // --- 4. ACTION HANDLERS (LOGGING DATA) ---
+        scanItemBtn.addEventListener('click', openModal);
+        closeModalBtn.addEventListener('click', closeModal);
+        window.addEventListener('click', (e) => {
+            if (e.target === scannerModal) closeModal();
+        });
+        
+        // --- 6. DASHBOARD LOGIC AND RENDERING (COMPLETE) ---
         async function logFoodItem(item) {
             const { data: { user } } = await db.auth.getUser();
             if (!user) {
@@ -366,9 +388,8 @@
                 alert("Failed to log food.");
             }
         }
-
+        
         async function handleQuickAdd() {
-            // This can be replaced with a proper modal later
             const name = prompt("Enter food name:");
             if (!name) return;
             const calories = parseInt(prompt("Enter calories:"), 10);
@@ -384,7 +405,6 @@
             await logFoodItem({ name: "Water (250ml)", calories: 0, protein: 0, carbs: 0 });
         }
 
-        // --- 5. RENDERING LOGIC (NO CHANGES NEEDED HERE) ---
         function updateGreeting(userName) {
             const currentHour = new Date().getHours();
             let greeting = "Good Morning";
@@ -430,23 +450,46 @@
                 radialContainer.appendChild(radialBar);
             }
         }
+        
+        function renderFocusCard() {
+            if (!focusContainer) return;
+            let lowestProgress = Infinity;
+            let focusMetric = 'calories';
+            for (const key in dailySummary) {
+                const metric = dailySummary[key];
+                const progress = (metric.consumed / metric.goal);
+                if (progress < lowestProgress) {
+                    lowestProgress = progress;
+                    focusMetric = key;
+                }
+            }
+            const remaining = Math.max(0, dailySummary[focusMetric].goal - dailySummary[focusMetric].consumed);
+            focusContainer.innerHTML = `<div class="card-header"><h3>Your Daily Focus</h3></div><p style="margin-bottom: auto;">To stay balanced, prioritize your <strong>${focusMetric}</strong> intake.</p><p style="font-size: 1.5rem; font-weight: 700; color: var(--dark-green);">You need ${remaining}g more</p>`;
+        }
 
-        function renderFocusCard() { /* ... unchanged ... */ }
-        function renderMealLog(foodLogs) { /* ... unchanged ... */ }
-        function renderChart() { /* ... unchanged ... */ }
-
-        // --- 6. EVENT LISTENERS ---
-        scanItemBtn.addEventListener('click', openModal);
-        closeModalBtn.addEventListener('click', closeModal);
-        window.addEventListener('click', (e) => {
-            if (e.target === scannerModal) closeModal();
-        });
+        function renderMealLog(foodLogs) {
+            if (!mealLogContainer) return;
+            mealLogContainer.innerHTML = '';
+            if (foodLogs.length === 0) {
+                 mealLogContainer.innerHTML = '<p style="text-align: center; color: #777;">No meals logged yet today.</p>';
+                 return;
+            }
+            foodLogs.slice(0, 5).forEach(meal => {
+                const mealItem = document.createElement('div');
+                mealItem.className = 'meal-item';
+                mealItem.innerHTML = `<div class="meal-item-info"><i class="fa-solid fa-utensils"></i><div><strong>${meal.name}</strong></div></div><span class="meal-item-calories">${meal.calories} kcal</span>`;
+                mealLogContainer.appendChild(mealItem);
+            });
+        }
+        
         quickAddBtn.addEventListener('click', handleQuickAdd);
         addWaterBtn.addEventListener('click', handleAddWater);
-        
         document.getElementById('sidebar-toggle').addEventListener('click', () => {
             document.body.classList.toggle('sidebar-collapsed');
         });
+
+        // --- INITIALIZE SCRIPT ---
+        loadModel();
     </script>
 </body>
 </html>
