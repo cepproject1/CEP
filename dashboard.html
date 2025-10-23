@@ -96,7 +96,18 @@
         <div class="modal-content">
             <div class="modal-header"><h3>Analyze Food Image</h3><button class="close-modal-btn">&times;</button></div>
             <div id="camera-view"><video id="camera-feed" playsinline autoplay muted></video><canvas id="image-canvas"></canvas><div class="scanner-controls"><button id="capture-photo-btn" class="scanner-btn capture-btn"><i class="fa-solid fa-camera"></i> Capture</button><button id="switch-to-upload-btn" class="scanner-btn switch-view-btn"><i class="fa-solid fa-upload"></i> Use Upload</button></div></div>
-            <div id="upload-view" style="display: none;"><img id="image-preview" src="https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image" alt="Image preview"/><div class="scanner-controls"><input type="file" id="image-uploader" accept="image/*" style="display:none;"><label for="image-uploader" class="scanner-btn"><i class="fa-solid fa-file-image"></i> Select Image</label><button id="switch-to-camera-btn" class="scanner-btn switch-view-btn"><i class="fa-solid fa-video"></i> Use Camera</button></div></div>
+            
+            <!-- View for File Upload -->
+            <div id="upload-view" style="display: none;">
+                <!-- **FIXED**: Added crossorigin="anonymous" to solve Tainted Canvas error -->
+                <img id="image-preview" src="https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image" alt="Image preview" crossorigin="anonymous"/>
+                <div class="scanner-controls">
+                     <input type="file" id="image-uploader" accept="image/*" style="display:none;">
+                     <label for="image-uploader" class="scanner-btn"><i class="fa-solid fa-file-image"></i> Select Image</label>
+                    <button id="switch-to-camera-btn" class="scanner-btn switch-view-btn"><i class="fa-solid fa-video"></i> Use Camera</button>
+                </div>
+            </div>
+
             <div id="loading-indicator" style="display: none;"></div><div id="scan-result" style="display: none;"></div>
         </div>
     </div>
@@ -118,7 +129,7 @@
     <script type="module">
         // --- 1. INITIALIZE SUPABASE & APIs ---
         const SUPABASE_URL = 'https://dueaxivhontzkvsiwcjc.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1ZWF4aXZob250emt2c2l3Y2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjgwNTcsImV4cCI6MjA3NTM0NDA1N30.oJpcPh6WOOiNBHjXu6H2PZFkLF3wORdffagx9zDMmNk';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1ZWF4aXZob250emt2c2l3Y2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjgwNTcsImV4cCI6MjA3NTM0NDA1N30.oJpcPh6WOOiNBHjXu6H2PZFkLF3wORdffagx9zDMmNk';
         const EDAMAM_APP_ID = 'f34a397d';
         const EDAMAM_APP_KEY = 'ee8198f9a60052bec15871ca984bc1fc';
 
@@ -149,8 +160,15 @@
                 console.log('✅ User authenticated.');
                 await loadDashboardData(session.user); 
             } else { 
-                console.log('Redirecting to login.');
-                window.location.href = '/index.html'; 
+                // **FIXED**: Removed redirect which caused errors in some environments.
+                // If not logged in, the dashboard just won't load data.
+                // Login/redirect logic should be handled elsewhere (e.g., dedicated login page or auth.js if used).
+                console.log('👤 No active session found. Dashboard will not load data.');
+                greetingElement.textContent = "Please log in."; // Or a similar message
+                // Disable interactive elements if needed
+                scanItemBtn.disabled = true;
+                quickAddBtn.disabled = true;
+                addWaterBtn.disabled = true;
             }
         });
         
@@ -210,10 +228,11 @@
             context.translate(imageCanvas.width, 0); context.scale(-1, 1);
             context.drawImage(cameraFeed, 0, 0, imageCanvas.width, imageCanvas.height);
             const imageDataUrl = imageCanvas.toDataURL('image/jpeg');
-            imagePreview.src = imageDataUrl;
+            imagePreview.src = imageDataUrl; // This is a data URI, no CORS needed
+            imagePreview.crossOrigin = null; // Ensure crossOrigin is reset if it was set before
             stopCamera();
             switchToUploadView();
-            analyzeImage(imagePreview);
+            analyzeImage(imagePreview); // Analyze the captured image
         }
 
         async function analyzeImage(imageElement) {
@@ -224,6 +243,11 @@
             loadingIndicator.style.display = 'block'; loadingIndicator.textContent = '🤖 Analyzing image...';
             scanResultDiv.style.display = 'none';
             try {
+                // Set crossOrigin only if the source is not a data URI
+                if (!imageElement.src.startsWith('data:')) {
+                    imageElement.crossOrigin = "anonymous";
+                }
+                
                 const predictions = await foodModel.classify(imageElement);
                 if (predictions && predictions.length > 0) {
                     const topResult = predictions[0].className.split(',')[0];
@@ -233,7 +257,12 @@
             } catch (error) {
                 console.error('Error during analysis:', error);
                 loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'block';
-                scanResultDiv.innerHTML = `<p>Sorry, I couldn't identify the food. Please try another picture.</p>`;
+                // Check for specific CORS error (less reliable, but a hint)
+                if (error instanceof SecurityError || error.message.includes('Tainted canvases')) {
+                     scanResultDiv.innerHTML = `<p>Error analyzing image due to security restrictions (CORS). Try uploading the image file instead.</p>`;
+                } else {
+                     scanResultDiv.innerHTML = `<p>Sorry, I couldn't identify the food. Please try another picture.</p>`;
+                }
             }
         }
 
@@ -252,11 +281,31 @@
 
         function displayNutritionInfo(product) {
             scanResultDiv.innerHTML = `<h4>${product.name}</h4><div class="nutrition-facts"><p><strong>Nutrition per serving (approx. 100g):</strong></p><p>Calories: ${product.calories.toFixed(0)} kcal</p><p>Protein: ${product.protein.toFixed(1)} g</p><p>Carbohydrates: ${product.carbs.toFixed(1)} g</p></div><button class="log-food-btn" id="log-scanned-item">Log This Item</button>`;
+            
+            // Event Listener with robust try/catch/finally
             document.getElementById('log-scanned-item').addEventListener('click', async () => {
                 const logButton = document.getElementById('log-scanned-item');
-                logButton.disabled = true; logButton.textContent = 'Logging...';
-                await logFoodItem(product); 
-                closeScannerModal();
+                logButton.disabled = true; 
+                logButton.textContent = 'Logging...';
+                try {
+                    const success = await logFoodItem(product); 
+                    if (success) {
+                        closeScannerModal(); // Only close if successful
+                    }
+                } catch (error) {
+                    // Catch any unexpected errors from logFoodItem
+                    console.error("Unhandled error in log click handler:", error);
+                    alert("An unexpected error occurred. Please try again.");
+                } finally {
+                    // **FIXED** This block ensures the button is *always* reset if the modal didn't close
+                    if (!scannerModal.classList.contains('visible')) {
+                        // Modal is closed, do nothing more needed
+                    } else {
+                        // Modal is still open (likely due to an error during logging), reset button
+                        logButton.disabled = false;
+                        logButton.textContent = 'Log This Item';
+                    }
+                }
             });
         }
 
@@ -267,41 +316,50 @@
         function closeScannerModal() { closeModal(scannerModal); stopCamera(); resetScannerModalState(); }
         function openLogModal() { renderFullMealLog(); openModal(logModal); }
         function closeLogModal() { closeModal(logModal); }
-        function resetScannerModalState() { imagePreview.src = 'https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image'; imageUploader.value = ''; loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'none'; scanResultDiv.innerHTML = ''; }
+        function resetScannerModalState() { 
+            imagePreview.src = 'https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image'; 
+            imagePreview.crossOrigin = "anonymous"; // Ensure placeholder is also CORS-friendly
+            imageUploader.value = ''; 
+            loadingIndicator.style.display = 'none'; 
+            scanResultDiv.style.display = 'none'; 
+            scanResultDiv.innerHTML = ''; 
+        }
         function switchToUploadView() { cameraView.style.display = 'none'; uploadView.style.display = 'block'; stopCamera(); }
         function switchToCameraView() { cameraView.style.display = 'block'; uploadView.style.display = 'none'; startCamera(); }
         
         // --- 6. DASHBOARD LOGIC AND RENDERING ---
+        
+        // Log Food Item function (no changes needed from previous fix)
         async function logFoodItem(item) { 
             console.log('Attempting to log item:', item);
-            const { data: { user } } = await db.auth.getUser(); 
-            if (!user) { 
-                alert("You must be logged in to log an item."); 
-                return; 
-            } 
-            
+            const { data: authData, error: authError } = await db.auth.getUser();
+            if (authError || !authData?.user) {
+                console.error("❌ Error fetching user or user not logged in:", authError);
+                alert("You must be logged in to log an item. Please refresh the page.");
+                return false; 
+            }
+            const user = authData.user;
             const name = item.name;
             const calories = Math.round(item.calories);
             const protein = Math.round(item.protein);
             const carbs = Math.round(item.carbs);
-
             if (!name || isNaN(calories) || isNaN(protein) || isNaN(carbs)) {
                 console.error('❌ Invalid food data. Aborting log.', {name, calories, protein, carbs});
                 alert('Could not log item. The nutritional data received was incomplete. Please try a different item or add it manually.');
-                return;
+                return false;
             }
-
             const foodToLog = { user_id: user.id, name, calories, protein, carbs };
             console.log('✅ Data is valid. Logging to Supabase:', foodToLog);
-
             try { 
                 const { error } = await db.from('food_log').insert([foodToLog]); 
                 if (error) throw error; 
                 console.log('✅ Item logged successfully.');
                 await loadDashboardData(user); 
+                return true; 
             } catch (error) { 
                 console.error("❌ Error logging food to Supabase:", error); 
                 alert(`Failed to log food: ${error.message}`); 
+                return false; 
             } 
         }
 
@@ -451,9 +509,13 @@
         imageUploader.addEventListener('change', () => {
             if (imageUploader.files && imageUploader.files[0]) {
                 const reader = new FileReader();
-                reader.onload = (e) => { imagePreview.src = e.target.result; };
+                reader.onload = (e) => { 
+                    imagePreview.src = e.target.result; 
+                    // When a file is read, it's a Data URI, which doesn't need CORS
+                    imagePreview.crossOrigin = null; 
+                    imagePreview.onload = () => analyzeImage(imagePreview);
+                };
                 reader.readAsDataURL(imageUploader.files[0]);
-                imagePreview.onload = () => analyzeImage(imagePreview);
             }
         });
         document.querySelectorAll('.nav-link').forEach(link => {
