@@ -99,7 +99,6 @@
             
             <!-- View for File Upload -->
             <div id="upload-view" style="display: none;">
-                <!-- **FIXED**: Added crossorigin="anonymous" to solve Tainted Canvas error -->
                 <img id="image-preview" src="https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image" alt="Image preview" crossorigin="anonymous"/>
                 <div class="scanner-controls">
                      <input type="file" id="image-uploader" accept="image/*" style="display:none;">
@@ -121,7 +120,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- CORRECTED SUPABASE SCRIPT URL -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@latest/dist/mobilenet.min.js"></script>
@@ -144,6 +142,7 @@
         let userProfile = null, foodModel = null, cameraStream = null, weeklyChart = null;
         let todaysLogs = [];
         let dailySummary = { calories: { consumed: 0, goal: 2000 }, protein: { consumed: 0, goal: 120 }, carbs: { consumed: 0, goal: 250 } };
+        const DEFAULT_GOALS = { daily_calorie_goal: 2000, daily_protein_goal: 120, daily_carbs_goal: 250 };
 
         // --- 2. LOAD AI MODEL ---
         async function loadModel() {
@@ -168,17 +167,27 @@
             }
         });
         
+        // **UPDATED** loadDashboardData function
         async function loadDashboardData(user) { 
             if (!user) return;
             console.log('🚀 Loading dashboard data...');
+            userProfile = null; // Reset profile on load
             try {
                 // Fetch profile
                 const { data: profileData, error: profileError } = await db.from('profiles').select('username, avatar_url, daily_calorie_goal, daily_protein_goal, daily_carbs_goal').eq('id', user.id).single();
-                if (profileError && profileError.code !== 'PGRST116') throw profileError; 
-                userProfile = profileData;
-                console.log('👤 Profile data:', userProfile);
+                
+                if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means no row found
+                    throw profileError; // Throw actual errors
+                } else if (profileData) {
+                     userProfile = profileData;
+                     console.log('👤 Profile data found:', userProfile);
+                } else {
+                     // **FIXED**: Profile not found, use defaults and log warning
+                     console.warn('👤 Profile not found for user. Using default goals.');
+                     userProfile = DEFAULT_GOALS; // Assign default goals
+                }
 
-                // Fetch last 7 days of food logs
+                // Fetch last 7 days of food logs (continue even if profile was missing)
                 const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
                 const { data: foodData, error: foodError } = await db.from('food_log').select('name, calories, protein, carbs, created_at').eq('user_id', user.id).gte('created_at', sevenDaysAgo);
                 if (foodError) throw foodError;
@@ -189,8 +198,8 @@
                 todaysLogs = foodData.filter(log => log.created_at.startsWith(todayStr));
                 console.log('🥗 Filtered logs for today:', todaysLogs);
                 
-                // Update UI
-                updateGreeting(userProfile?.username || user.email.split('@')[0], userProfile?.avatar_url);
+                // Update UI using found profile or defaults
+                updateGreeting(userProfile?.username || user.email.split('@')[0], userProfile?.avatar_url); // Use username if available
                 calculateDailySummary(todaysLogs); 
                 renderDashboardComponents(todaysLogs);
                 renderChart(foodData);
@@ -279,22 +288,20 @@
             // Event Listener with robust try/catch/finally
             document.getElementById('log-scanned-item').addEventListener('click', async () => {
                 const logButton = document.getElementById('log-scanned-item');
-                // Ensure button exists before proceeding
                 if (!logButton) return; 
 
                 logButton.disabled = true; 
                 logButton.textContent = 'Logging...';
-                let success = false; // Track if logging was successful
+                let success = false; 
                 try {
                     success = await logFoodItem(product); 
                     if (success) {
-                        closeScannerModal(); // Only close if successful
+                        closeScannerModal(); 
                     }
                 } catch (error) {
                     console.error("Unhandled error in log click handler:", error);
                     alert("An unexpected error occurred. Please try again.");
                 } finally {
-                    // **FIXED** This block ensures the button is *always* reset if logging didn't succeed or threw an error
                     if (!success && logButton) { 
                        logButton.disabled = false;
                        logButton.textContent = 'Log This Item';
@@ -323,12 +330,11 @@
         
         // --- 6. DASHBOARD LOGIC AND RENDERING ---
         
-        // **UPDATED** Log Food Item function
+        // Log Food Item function (no changes needed from previous fix)
         async function logFoodItem(item) { 
             console.log('Attempting to log item:', item);
             let user = null;
             try {
-                // Safer user fetching
                  const { data: authData, error: authError } = await db.auth.getUser();
                  if (authError || !authData?.user) {
                     throw new Error(authError?.message || "User not logged in.");
@@ -337,7 +343,7 @@
             } catch (error) {
                  console.error("❌ Error fetching user:", error);
                  alert("Could not verify user session. Please refresh and log in again.");
-                 return false; // Indicate failure
+                 return false; 
             }
             
             const name = item.name;
@@ -348,7 +354,7 @@
             if (!name || isNaN(calories) || isNaN(protein) || isNaN(carbs)) {
                 console.error('❌ Invalid food data. Aborting log.', {name, calories, protein, carbs});
                 alert('Could not log item. The nutritional data received was incomplete. Please try a different item or add it manually.');
-                return false; // Indicate failure
+                return false;
             }
 
             const foodToLog = { user_id: user.id, name, calories, protein, carbs };
@@ -357,17 +363,16 @@
             try { 
                 const { error } = await db.from('food_log').insert([foodToLog]); 
                 if (error) {
-                    console.error("❌ Supabase insert error:", error); // Log the specific Supabase error
-                    throw error; // Re-throw to be caught by the outer catch
+                    console.error("❌ Supabase insert error:", error); 
+                    throw error; 
                 }
                 console.log('✅ Item logged successfully in Supabase.');
                 await loadDashboardData(user); 
-                return true; // Indicate success
+                return true; 
             } catch (error) { 
-                // Catch errors from the insert attempt
                 console.error("❌ Error during Supabase insert operation:", error); 
                 alert(`Failed to log food: ${error.message || "Unknown database error."}`); 
-                return false; // Indicate failure
+                return false; 
             } 
         }
 
@@ -388,13 +393,16 @@
             if (avatarUrl) { sidebarAvatar.src = avatarUrl; }
         }
 
+        // **UPDATED** calculateDailySummary function
         function calculateDailySummary(logs) { 
             dailySummary.calories.consumed = 0; dailySummary.protein.consumed = 0; dailySummary.carbs.consumed = 0;
-            if (userProfile) { 
-                dailySummary.calories.goal = userProfile.daily_calorie_goal || 2000; 
-                dailySummary.protein.goal = userProfile.daily_protein_goal || 120; 
-                dailySummary.carbs.goal = userProfile.daily_carbs_goal || 250;
-            }
+            
+            // Use profile goals if available, otherwise use defaults
+            const goals = userProfile || DEFAULT_GOALS;
+            dailySummary.calories.goal = goals.daily_calorie_goal || DEFAULT_GOALS.daily_calorie_goal; 
+            dailySummary.protein.goal = goals.daily_protein_goal || DEFAULT_GOALS.daily_protein_goal; 
+            dailySummary.carbs.goal = goals.daily_carbs_goal || DEFAULT_GOALS.daily_carbs_goal;
+
             logs.forEach(item => { 
                 dailySummary.calories.consumed += (item.calories || 0); 
                 dailySummary.protein.consumed += (item.protein || 0); 
@@ -519,7 +527,6 @@
                 const reader = new FileReader();
                 reader.onload = (e) => { 
                     imagePreview.src = e.target.result; 
-                    // When a file is read, it's a Data URI, which doesn't need CORS
                     imagePreview.crossOrigin = null; 
                     imagePreview.onload = () => analyzeImage(imagePreview);
                 };
