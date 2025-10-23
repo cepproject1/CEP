@@ -160,12 +160,8 @@
                 console.log('✅ User authenticated.');
                 await loadDashboardData(session.user); 
             } else { 
-                // **FIXED**: Removed redirect which caused errors in some environments.
-                // If not logged in, the dashboard just won't load data.
-                // Login/redirect logic should be handled elsewhere (e.g., dedicated login page or auth.js if used).
                 console.log('👤 No active session found. Dashboard will not load data.');
-                greetingElement.textContent = "Please log in."; // Or a similar message
-                // Disable interactive elements if needed
+                greetingElement.textContent = "Please log in."; 
                 scanItemBtn.disabled = true;
                 quickAddBtn.disabled = true;
                 addWaterBtn.disabled = true;
@@ -228,11 +224,11 @@
             context.translate(imageCanvas.width, 0); context.scale(-1, 1);
             context.drawImage(cameraFeed, 0, 0, imageCanvas.width, imageCanvas.height);
             const imageDataUrl = imageCanvas.toDataURL('image/jpeg');
-            imagePreview.src = imageDataUrl; // This is a data URI, no CORS needed
-            imagePreview.crossOrigin = null; // Ensure crossOrigin is reset if it was set before
+            imagePreview.src = imageDataUrl; 
+            imagePreview.crossOrigin = null; 
             stopCamera();
             switchToUploadView();
-            analyzeImage(imagePreview); // Analyze the captured image
+            analyzeImage(imagePreview); 
         }
 
         async function analyzeImage(imageElement) {
@@ -243,7 +239,6 @@
             loadingIndicator.style.display = 'block'; loadingIndicator.textContent = '🤖 Analyzing image...';
             scanResultDiv.style.display = 'none';
             try {
-                // Set crossOrigin only if the source is not a data URI
                 if (!imageElement.src.startsWith('data:')) {
                     imageElement.crossOrigin = "anonymous";
                 }
@@ -257,7 +252,6 @@
             } catch (error) {
                 console.error('Error during analysis:', error);
                 loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'block';
-                // Check for specific CORS error (less reliable, but a hint)
                 if (error instanceof SecurityError || error.message.includes('Tainted canvases')) {
                      scanResultDiv.innerHTML = `<p>Error analyzing image due to security restrictions (CORS). Try uploading the image file instead.</p>`;
                 } else {
@@ -285,25 +279,25 @@
             // Event Listener with robust try/catch/finally
             document.getElementById('log-scanned-item').addEventListener('click', async () => {
                 const logButton = document.getElementById('log-scanned-item');
+                // Ensure button exists before proceeding
+                if (!logButton) return; 
+
                 logButton.disabled = true; 
                 logButton.textContent = 'Logging...';
+                let success = false; // Track if logging was successful
                 try {
-                    const success = await logFoodItem(product); 
+                    success = await logFoodItem(product); 
                     if (success) {
                         closeScannerModal(); // Only close if successful
                     }
                 } catch (error) {
-                    // Catch any unexpected errors from logFoodItem
                     console.error("Unhandled error in log click handler:", error);
                     alert("An unexpected error occurred. Please try again.");
                 } finally {
-                    // **FIXED** This block ensures the button is *always* reset if the modal didn't close
-                    if (!scannerModal.classList.contains('visible')) {
-                        // Modal is closed, do nothing more needed
-                    } else {
-                        // Modal is still open (likely due to an error during logging), reset button
-                        logButton.disabled = false;
-                        logButton.textContent = 'Log This Item';
+                    // **FIXED** This block ensures the button is *always* reset if logging didn't succeed or threw an error
+                    if (!success && logButton) { 
+                       logButton.disabled = false;
+                       logButton.textContent = 'Log This Item';
                     }
                 }
             });
@@ -318,7 +312,7 @@
         function closeLogModal() { closeModal(logModal); }
         function resetScannerModalState() { 
             imagePreview.src = 'https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image'; 
-            imagePreview.crossOrigin = "anonymous"; // Ensure placeholder is also CORS-friendly
+            imagePreview.crossOrigin = "anonymous"; 
             imageUploader.value = ''; 
             loadingIndicator.style.display = 'none'; 
             scanResultDiv.style.display = 'none'; 
@@ -329,37 +323,51 @@
         
         // --- 6. DASHBOARD LOGIC AND RENDERING ---
         
-        // Log Food Item function (no changes needed from previous fix)
+        // **UPDATED** Log Food Item function
         async function logFoodItem(item) { 
             console.log('Attempting to log item:', item);
-            const { data: authData, error: authError } = await db.auth.getUser();
-            if (authError || !authData?.user) {
-                console.error("❌ Error fetching user or user not logged in:", authError);
-                alert("You must be logged in to log an item. Please refresh the page.");
-                return false; 
+            let user = null;
+            try {
+                // Safer user fetching
+                 const { data: authData, error: authError } = await db.auth.getUser();
+                 if (authError || !authData?.user) {
+                    throw new Error(authError?.message || "User not logged in.");
+                 }
+                 user = authData.user;
+            } catch (error) {
+                 console.error("❌ Error fetching user:", error);
+                 alert("Could not verify user session. Please refresh and log in again.");
+                 return false; // Indicate failure
             }
-            const user = authData.user;
+            
             const name = item.name;
             const calories = Math.round(item.calories);
             const protein = Math.round(item.protein);
             const carbs = Math.round(item.carbs);
+
             if (!name || isNaN(calories) || isNaN(protein) || isNaN(carbs)) {
                 console.error('❌ Invalid food data. Aborting log.', {name, calories, protein, carbs});
                 alert('Could not log item. The nutritional data received was incomplete. Please try a different item or add it manually.');
-                return false;
+                return false; // Indicate failure
             }
+
             const foodToLog = { user_id: user.id, name, calories, protein, carbs };
-            console.log('✅ Data is valid. Logging to Supabase:', foodToLog);
+            console.log('✅ Data is valid. Sending insert request to Supabase:', foodToLog);
+
             try { 
                 const { error } = await db.from('food_log').insert([foodToLog]); 
-                if (error) throw error; 
-                console.log('✅ Item logged successfully.');
+                if (error) {
+                    console.error("❌ Supabase insert error:", error); // Log the specific Supabase error
+                    throw error; // Re-throw to be caught by the outer catch
+                }
+                console.log('✅ Item logged successfully in Supabase.');
                 await loadDashboardData(user); 
-                return true; 
+                return true; // Indicate success
             } catch (error) { 
-                console.error("❌ Error logging food to Supabase:", error); 
-                alert(`Failed to log food: ${error.message}`); 
-                return false; 
+                // Catch errors from the insert attempt
+                console.error("❌ Error during Supabase insert operation:", error); 
+                alert(`Failed to log food: ${error.message || "Unknown database error."}`); 
+                return false; // Indicate failure
             } 
         }
 
