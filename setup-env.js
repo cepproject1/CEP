@@ -14,9 +14,11 @@ try {
   const supabaseKey = process.env.PUBLIC_SUPABASE_ANON_KEY;
 
   if (supabaseUrl && supabaseKey) {
+    console.log('Found Supabase configuration');
     // Replace the placeholders in the HTML content
     htmlContent = htmlContent.replace('__SUPABASE_URL__', supabaseUrl);
     htmlContent = htmlContent.replace('__SUPABASE_ANON_KEY__', supabaseKey);
+    console.log('Supabase configuration replaced successfully');
     
     // Write the modified content back to the file
     fs.writeFileSync(filePath, htmlContent, 'utf8');

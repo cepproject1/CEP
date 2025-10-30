@@ -4,7 +4,9 @@
   "description": "Static site with environment variable injection for Railway.",
   "main": "index.html",
   "scripts": {
-    "start": "node setup-env.js && serve"
+    "build": "node setup-env.js",
+    "start": "serve -s .",
+    "dev": "node setup-env.js && serve"
   },
   "dependencies": {
     "serve": "^14.2.1"
