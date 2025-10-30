@@ -10,9 +10,9 @@
     <!-- Supabase Client Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Set your real Supabase keys here
+        // Initialize Supabase configuration
         window.SUPABASE_URL = 'https://dueaxivhontzkvsiwcjc.supabase.co';
-        window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1ZWF4aXZob250emt2c2l3Y2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjgwNTcsImV4cCI6MjA3NTM0NDA1N30.oJpcPh6WOOiNBHjXu6H2PZFkLF3wORdffagx9zDMmNk';
+        window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
     </script>
 </head>
 <body>
@@ -53,11 +53,10 @@
 
     <!-- Supabase Logic -->
     <script type="module">
-        // Use the real keys from the window object
-        const SUPABASE_URL = window.SUPABASE_URL;
-        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY;
-        const { createClient } = supabase;
-        const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // --- 1. GET SUPABASE KEYS FROM PLACEHOLDERS ---
+        // These placeholders will be replaced by the setup script during deployment.
+        window.SUPABASE_URL = 'https://dueaxivhontzkvsiwcjc.supabase.co';
+        const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9__';
 
         const loginForm = document.getElementById('loginForm');
         const submitBtn = document.getElementById('login-submit-btn');
@@ -65,56 +64,92 @@
         const errorMessageDiv = document.getElementById('error-message');
         const formTitle = document.getElementById('form-title');
         const formSubtitle = document.getElementById('form-subtitle');
-        let isSignInMode = false;
+        
+        if (SUPABASE_URL.startsWith('__')) {
+             errorMessageDiv.innerHTML = '<strong>Configuration Error:</strong><br>Supabase keys are not configured. Please check your environment variables in Railway.';
+             submitBtn.disabled = true;
+             submitBtn.textContent = 'Configuration Needed';
+        } else {
+            // --- If keys are present, run the full Supabase logic ---
+            const { createClient } = supabase;
+            const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            let isSignInMode = false;
 
-        function updateFormUI() {
-            errorMessageDiv.textContent = '';
-            if (isSignInMode) {
-                formTitle.textContent = 'Sign In';
-                formSubtitle.textContent = 'Access Your Health Journey';
-                submitBtn.textContent = 'Sign In';
-                toggleAuthLink.textContent = 'Don\'t have an account? Create One';
-            } else {
-                formTitle.textContent = 'Create Your Profile';
-                formSubtitle.textContent = 'Start Your Health Journey';
-                submitBtn.textContent = 'Create Profile & Login';
-                toggleAuthLink.textContent = 'Already have an account? Sign In';
-            }
-        }
-
-        toggleAuthLink.addEventListener('click', () => {
-            isSignInMode = !isSignInMode;
-            updateFormUI();
-        });
-
-        loginForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const email = loginForm.email.value;
-            const password = loginForm.password.value;
-            submitBtn.disabled = true;
-            errorMessageDiv.textContent = '';
-            try {
-                let response;
+            function updateFormUI() {
+                errorMessageDiv.textContent = ''; // Clear errors on toggle
                 if (isSignInMode) {
-                    submitBtn.textContent = 'Signing In...';
-                    response = await _supabase.auth.signInWithPassword({ email, password });
-                    if (response.error) throw response.error;
+                    formTitle.textContent = 'Sign In';
+                    formSubtitle.textContent = 'Access Your Health Journey';
+                    submitBtn.textContent = 'Sign In';
+                    toggleAuthLink.textContent = 'Don\'t have an account? Create One';
                 } else {
-                    submitBtn.textContent = 'Creating Profile...';
-                    response = await _supabase.auth.signUp({ email, password });
-                    if (response.error) throw response.error;
-                    const userId = response.data.user.id;
-                    await _supabase.from('profiles').insert([{ id: userId, email, created_at: new Date() }]);
+                    formTitle.textContent = 'Create Your Profile';
+                    formSubtitle.textContent = 'Start Your Health Journey';
+                    submitBtn.textContent = 'Create Profile & Login';
+                    toggleAuthLink.textContent = 'Already have an account? Sign In';
                 }
-                sessionStorage.setItem('isLoggedIn', 'true');
-                window.location.href = 'dashboard.html';
-            } catch (error) {
-                errorMessageDiv.textContent = error.message;
-                submitBtn.disabled = false;
-                updateFormUI();
             }
-        });
-        updateFormUI(); // Initial UI setup
+
+            toggleAuthLink.addEventListener('click', () => {
+                isSignInMode = !isSignInMode;
+                updateFormUI();
+            });
+
+            loginForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const email = loginForm.email.value;
+                const password = loginForm.password.value;
+                submitBtn.disabled = true;
+                errorMessageDiv.textContent = '';
+
+                try {
+                    let response;
+                    if (isSignInMode) {
+                        // --- SIGN IN LOGIC ---
+                        submitBtn.textContent = 'Signing In...';
+                        response = await _supabase.auth.signInWithPassword({
+                            email: email,
+                            password: password,
+                        });
+                        if (response.error) throw response.error;
+                        console.log('User signed in successfully:', response.data.user.id);
+                    } else {
+                        // --- CREATE USER (SIGN UP) LOGIC ---
+                        submitBtn.textContent = 'Creating Profile...';
+                        response = await _supabase.auth.signUp({
+                            email: email,
+                            password: password,
+                        });
+                        if (response.error) throw response.error;
+
+                        const userId = response.data.user.id;
+                        console.log('User created successfully:', userId);
+
+                        const { error: insertError } = await _supabase
+                            .from('profiles')
+                            .insert([
+                                { id: userId, email: email, created_at: new Date() }
+                            ]);
+
+                        if (insertError) throw insertError;
+                        console.log('Profile saved.');
+                    }
+                    
+                    sessionStorage.setItem('isLoggedIn', 'true'); 
+                    window.location.href = 'dashboard.html';
+
+                } catch (error) {
+                    console.error('Supabase error:', error.message);
+                    errorMessageDiv.textContent = error.message;
+                    submitBtn.disabled = false;
+                    updateFormUI(); // Reset button text
+                }
+            });
+
+            updateFormUI(); // Initial UI setup
+        }
 
         // --- Helper to update time ---
         function updateTime() {
