@@ -1,4 +1,6 @@
 // Initialize Supabase client
+const SUPABASE_URL = window.SUPABASE_URL || 'https://dueaxivhontzkvsiwcjc.supabase.co';
+const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // Your public anon key from Supabase
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Check authentication status
@@ -27,9 +29,26 @@ async function fetchUserProfile(userId) {
 }
 
 document.addEventListener('DOMContentLoaded', async function () {
+    // Test Supabase connection
+    try {
+        const { data, error } = await supabase.from('profiles').select('count').single();
+        if (error) {
+            console.error('Supabase connection error:', error);
+            alert('Error connecting to database. Please check console for details.');
+        } else {
+            console.log('Successfully connected to Supabase');
+        }
+    } catch (err) {
+        console.error('Fatal error connecting to Supabase:', err);
+        alert('Error connecting to database. Please check console for details.');
+    }
+
     // Check authentication and get user profile
     const user = await checkAuth();
-    if (!user) return;
+    if (!user) {
+        console.log('No authenticated user found');
+        return;
+    }
 
     const profile = await fetchUserProfile(user.id);
     
