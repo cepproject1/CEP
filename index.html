@@ -1,6 +1,132 @@
 <!DOCTYPE html>
-<!-- This file intentionally left blank to prevent redirect loops. -->
-<html lang="en"><head><meta charset="UTF-8"><title>NutriScan</title></head><body></body></html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUTRISCAN - Welcome</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/login_style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        window.SUPABASE_URL = 'https://dueaxivhontzkvsiwcjc.supabase.co';
+        window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
+    </script>
+</head>
+<body>
+    <div class="container" id="main-container">
+        <div class="top-bar">
+            <span class="time" id="current-time"></span>
+            <span>📶 🔋</span>
+        </div>
+        <div class="form-area">
+            <div class="main-header">
+                <h2 id="form-title">Create Your Profile</h2>
+                <p>Welcome to NUTRISCAN</p>
+            </div>
+            <form id="loginForm">
+                <h3 id="form-subtitle">Start Your Health Journey</h3>
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required minlength="6">
+                </div>
+                <div id="error-message" style="color: red; text-align: center; margin-top: 10px; font-weight: 500; line-height: 1.4;"></div>
+                <button type="submit" id="login-submit-btn">Create Profile & Login</button>
+                <p id="toggle-auth" style="text-align: center; margin-top: 20px; cursor: pointer; color: var(--primary-green); font-weight: 500;">Already have an account? Sign In</p>
+            </form>
+        </div>
+    </div>
+    <script type="module">
+    const SUPABASE_URL = window.SUPABASE_URL;
+    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY;
+    const { createClient } = supabase;
+    const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const loginForm = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('login-submit-btn');
+    const toggleAuthLink = document.getElementById('toggle-auth');
+    const errorMessageDiv = document.getElementById('error-message');
+    const formTitle = document.getElementById('form-title');
+    const formSubtitle = document.getElementById('form-subtitle');
+    if (SUPABASE_URL.startsWith('__')) {
+        errorMessageDiv.innerHTML = '<strong>Configuration Error:</strong><br>Supabase keys are not configured. Please check your environment variables in Railway.';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Configuration Needed';
+    } else {
+        let isSignInMode = false;
+        function updateFormUI() {
+            errorMessageDiv.textContent = '';
+            if (isSignInMode) {
+                formTitle.textContent = 'Sign In';
+                formSubtitle.textContent = 'Access Your Health Journey';
+                submitBtn.textContent = 'Sign In';
+                toggleAuthLink.textContent = 'Don\'t have an account? Create One';
+            } else {
+                formTitle.textContent = 'Create Your Profile';
+                formSubtitle.textContent = 'Start Your Health Journey';
+                submitBtn.textContent = 'Create Profile & Login';
+                toggleAuthLink.textContent = 'Already have an account? Sign In';
+            }
+        }
+        toggleAuthLink.addEventListener('click', () => {
+            isSignInMode = !isSignInMode;
+            updateFormUI();
+        });
+        loginForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const email = loginForm.email.value;
+            const password = loginForm.password.value;
+            submitBtn.disabled = true;
+            errorMessageDiv.textContent = '';
+            try {
+                let response;
+                if (isSignInMode) {
+                    submitBtn.textContent = 'Signing In...';
+                    response = await _supabase.auth.signInWithPassword({ email, password });
+                    if (response.error) throw response.error;
+                    console.log('User signed in successfully:', response.data.user.id);
+                } else {
+                    submitBtn.textContent = 'Creating Profile...';
+                    response = await _supabase.auth.signUp({ email, password });
+                    if (response.error) throw response.error;
+                    const userId = response.data.user.id;
+                    console.log('User created successfully:', userId);
+                    const { error: insertError } = await _supabase
+                        .from('profiles')
+                        .insert([
+                            { id: userId, email: email, created_at: new Date() }
+                        ]);
+                    if (insertError) throw insertError;
+                    console.log('Profile saved.');
+                }
+                sessionStorage.setItem('isLoggedIn', 'true'); 
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                console.error('Supabase error:', error.message);
+                errorMessageDiv.textContent = error.message;
+                submitBtn.disabled = false;
+                updateFormUI();
+            }
+        });
+        updateFormUI();
+    }
+    // --- Helper to update time ---
+    function updateTime() {
+        const timeEl = document.getElementById('current-time');
+        if(timeEl) {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            timeEl.textContent = `${hours}:${minutes}`;
+        }
+    }
+    setInterval(updateTime, 1000); 
+    updateTime();
+    </script>
+</body>
+</html>
                         Scan. Learn. <span class="gradient-text">Eat Smarter.</span>
                     </h1>
                     <p class="hero-description">
