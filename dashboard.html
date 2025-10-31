@@ -343,30 +343,25 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@latest/dist/mobilenet.min.js"></script>
     
     <script type="module">
-        // --- 1. INITIALIZE SUPABASE & APIs ---
-        const SUPABASE_URL = 'https://dueaxivhontzkvsiwcjc.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1ZWF4aXZob250emt2c2l3Y2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjgwNTcsImV4cCI6MjA3NTM0NDA1N30.oJpcPh6WOOiNBHjXu6H2PZFkLF3wORdffagx9zDMmNk';
+        // --- 1. INITIALIZE APIs ---
         const EDAMAM_APP_ID = 'f34a397d';
         const EDAMAM_APP_KEY = 'ee8198f9a60052bec15871ca984bc1fc';
-
-        const { createClient } = supabase;
-        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // --- UI ELEMENT SELECTORS ---
         const greetingElement = document.getElementById('dynamic-greeting'), sidebarUsernameElement = document.getElementById('sidebar-username'), sidebarAvatar = document.getElementById('sidebar-avatar'), radialContainer = document.getElementById('radial-summaries'), focusContainer = document.getElementById('daily-focus-card'), mealLogContainer = document.getElementById('meal-log-container'), quickAddBtn = document.querySelector('.quick-add-btn'), addWaterBtn = document.querySelector('.water-btn'), scanItemBtn = document.getElementById('scan-item-btn'), scanBtnText = document.getElementById('scan-btn-text'), weeklyChartCanvas = document.getElementById('weekly-chart').getContext('2d'), viewAllLogBtn = document.getElementById('view-all-log-btn');
         const scannerModal = document.getElementById('scanner-modal'), logModal = document.getElementById('log-modal'), cameraView = document.getElementById('camera-view'), uploadView = document.getElementById('upload-view'), cameraFeed = document.getElementById('camera-feed'), imageCanvas = document.getElementById('image-canvas'), capturePhotoBtn = document.getElementById('capture-photo-btn'), switchToUploadBtn = document.getElementById('switch-to-upload-btn'), switchToCameraBtn = document.getElementById('switch-to-camera-btn'), imageUploader = document.getElementById('image-uploader'), imagePreview = document.getElementById('image-preview'), loadingIndicator = document.getElementById('loading-indicator'), scanResultDiv = document.getElementById('scan-result'), fullLogContainer = document.getElementById('full-log-container');
         
         // --- GLOBAL STATE ---
-        let currentUser = null; // Store authenticated user
-        let userProfile = null, foodModel = null, cameraStream = null, weeklyChart = null;
+        let userProfile = { username: 'User', daily_calorie_goal: 2000, daily_protein_goal: 120, daily_carbs_goal: 250 };
+        let foodModel = null, cameraStream = null, weeklyChart = null;
         let todaysLogs = [];
         let dailySummary = { calories: { consumed: 0, goal: 2000 }, protein: { consumed: 0, goal: 120 }, carbs: { consumed: 0, goal: 250 } };
         const DEFAULT_GOALS = { daily_calorie_goal: 2000, daily_protein_goal: 120, daily_carbs_goal: 250 };
+        const STORAGE_KEY = 'nutriDash_foodLogs';
 
         // --- 2. LOAD AI MODEL ---
         async function loadModel() {
@@ -377,61 +372,54 @@
             } catch (error) { console.error('❌ Failed to load AI model:', error); scanBtnText.textContent = 'AI Model Error'; alert('Could not load the food recognition model. Please check your network connection and refresh the page.'); }
         }
 
-        // --- 3. AUTHENTICATION & DATA FETCHING ---
-        db.auth.onAuthStateChange(async (event, session) => { 
-            if (session) { 
-                console.log('✅ User authenticated.');
-                currentUser = session.user; // Store user globally
-                await loadDashboardData(session.user); 
-            } else { 
-                console.log('👤 No active session found. Dashboard will not load data.');
-                currentUser = null; // Clear user
-                greetingElement.textContent = "Please log in."; 
-                scanItemBtn.disabled = true;
-                quickAddBtn.disabled = true;
-                addWaterBtn.disabled = true;
-            }
-        });
-        
-        // **UPDATED** loadDashboardData function
-        async function loadDashboardData(user) { 
-            if (!user) return;
-            console.log('🚀 Loading dashboard data...');
-            userProfile = null; // Reset profile on load
+        // --- 3. LOCAL STORAGE FUNCTIONS ---
+        function loadFromLocalStorage() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (!stored) return [];
+            
             try {
-                // Fetch profile
-                const { data: profileData, error: profileError } = await db.from('profiles').select('username, avatar_url, daily_calorie_goal, daily_protein_goal, daily_carbs_goal').eq('id', user.id).single();
-                
-                if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means no row found
-                    throw profileError; // Throw actual errors
-                } else if (profileData) {
-                     userProfile = profileData;
-                     console.log('👤 Profile data found:', userProfile);
-                } else {
-                     // **FIXED**: Profile not found, use defaults and log warning
-                     console.warn('👤 Profile not found for user. Using default goals.');
-                     userProfile = DEFAULT_GOALS; // Assign default goals
-                }
+                const allLogs = JSON.parse(stored);
+                // Filter logs from last 7 days
+                const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+                return allLogs.filter(log => new Date(log.created_at).getTime() > sevenDaysAgo);
+            } catch (error) {
+                console.error('Error loading from localStorage:', error);
+                return [];
+            }
+        }
 
-                // Fetch last 7 days of food logs (continue even if profile was missing)
-                const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-                const { data: foodData, error: foodError } = await db.from('food_log').select('name, calories, protein, carbs, created_at').eq('user_id', user.id).gte('created_at', sevenDaysAgo);
-                if (foodError) throw foodError;
-                console.log('🍔 Fetched food data (last 7 days):', foodData);
+        function saveToLocalStorage(logs) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+                console.log('✅ Data saved to localStorage');
+            } catch (error) {
+                console.error('❌ Error saving to localStorage:', error);
+            }
+        }
+
+        function loadDashboardData() { 
+            console.log('� Loading dashboard data from localStorage...');
+            try {
+                // Load all logs from localStorage
+                const allLogs = loadFromLocalStorage();
+                console.log('🍔 Loaded food data (last 7 days):', allLogs);
                 
-                // Process data
+                // Filter today's logs
                 const todayStr = new Date().toISOString().slice(0, 10);
-                todaysLogs = foodData.filter(log => log.created_at.startsWith(todayStr));
+                todaysLogs = allLogs.filter(log => log.created_at.startsWith(todayStr));
                 console.log('🥗 Filtered logs for today:', todaysLogs);
                 
-                // Update UI using found profile or defaults
-                updateGreeting(userProfile?.username || user.email.split('@')[0], userProfile?.avatar_url); // Use username if available
+                // Update UI
+                updateGreeting(userProfile.username);
                 calculateDailySummary(todaysLogs); 
                 renderDashboardComponents(todaysLogs);
-                renderChart(foodData);
+                renderChart(allLogs);
                 console.log('✅ Dashboard loaded successfully.');
 
-            } catch (error) { console.error("❌ Error loading dashboard:", error); greetingElement.textContent = "Error loading data."; }
+            } catch (error) { 
+                console.error("❌ Error loading dashboard:", error); 
+                greetingElement.textContent = "Error loading data."; 
+            }
         }
         
         // --- 4. FOOD ANALYSIS & CAMERA LOGIC ---
@@ -579,17 +567,8 @@
         // --- 6. DASHBOARD LOGIC AND RENDERING ---
         
         // Log Food Item function
-        async function logFoodItem(item) { 
+        function logFoodItem(item) { 
             console.log('🔵 logFoodItem called with:', item);
-            
-            // Check if user is authenticated using global variable
-            if (!currentUser) {
-                console.error("❌ No authenticated user found in global state");
-                alert("You need to be logged in to log food items. Please log in first.");
-                return false;
-            }
-            
-            console.log('✅ Using authenticated user:', currentUser.id);
             
             const name = item.name;
             const calories = Math.round(item.calories);
@@ -604,46 +583,53 @@
                 return false;
             }
 
-            const foodToLog = { user_id: currentUser.id, name, calories, protein, carbs };
-            console.log('🔵 Attempting to insert to Supabase:', foodToLog);
+            const foodToLog = { 
+                name, 
+                calories, 
+                protein, 
+                carbs,
+                created_at: new Date().toISOString()
+            };
+            console.log('🔵 Saving to localStorage:', foodToLog);
 
             try { 
-                const { data, error } = await db.from('food_log').insert([foodToLog]); 
-                console.log('🔵 Supabase insert response:', { data, error });
+                // Load existing logs
+                const allLogs = loadFromLocalStorage();
                 
-                if (error) {
-                    console.error("❌ Supabase insert error:", error); 
-                    throw error; 
-                }
-                console.log('✅ Item logged successfully in Supabase.');
+                // Add new log
+                allLogs.push(foodToLog);
+                
+                // Save back to localStorage
+                saveToLocalStorage(allLogs);
+                
+                console.log('✅ Item logged successfully to localStorage.');
                 
                 console.log('🔵 Reloading dashboard data...');
-                await loadDashboardData(currentUser); 
+                loadDashboardData(); 
                 console.log('✅ Dashboard data reloaded.');
                 
                 return true; 
             } catch (error) { 
-                console.error("❌ Error during Supabase insert operation:", error); 
-                alert(`Failed to log food: ${error.message || "Unknown database error."}`); 
+                console.error("❌ Error during localStorage operation:", error); 
+                alert(`Failed to log food: ${error.message || "Unknown error."}`); 
                 return false; 
             } 
         }
 
-        async function handleQuickAdd() { 
+        function handleQuickAdd() { 
             const name = prompt("Enter food name:"); if (!name) return; 
             const calories = parseInt(prompt("Enter calories:"), 10), protein = parseInt(prompt("Enter protein (g):"), 10), carbs = parseInt(prompt("Enter carbs (g):"), 10); 
             if (isNaN(calories) || isNaN(protein) || isNaN(carbs)) { return alert("Please enter valid numbers."); } 
-            await logFoodItem({ name, calories, protein, carbs }); 
+            logFoodItem({ name, calories, protein, carbs }); 
         }
 
-        async function handleAddWater() { await logFoodItem({ name: "Water (250ml)", calories: 0, protein: 0, carbs: 0 }); }
+        function handleAddWater() { logFoodItem({ name: "Water (250ml)", calories: 0, protein: 0, carbs: 0 }); }
         
-        function updateGreeting(userName, avatarUrl) { 
+        function updateGreeting(userName) { 
             const currentHour = new Date().getHours(); let greeting = "Good Morning";
             if (currentHour >= 12 && currentHour < 17) greeting = "Good Afternoon"; if (currentHour >= 17) greeting = "Good Evening";
             greetingElement.textContent = `${greeting}, ${userName}!`; 
             sidebarUsernameElement.textContent = userName;
-            if (avatarUrl) { sidebarAvatar.src = avatarUrl; }
         }
 
         // **UPDATED** calculateDailySummary function
@@ -795,6 +781,7 @@
 
         // --- INITIALIZE SCRIPT ---
         loadModel();
+        loadDashboardData(); // Load data on page load
     </script>
 </body>
 </html>
