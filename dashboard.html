@@ -18,13 +18,17 @@
             background: rgba(0, 0, 0, 0.7); display: flex; align-items: center;
             justify-content: center; z-index: 1000; opacity: 0; visibility: hidden;
             transition: opacity 0.3s, visibility 0.3s;
+            overflow-y: auto;
+            padding: 20px 0;
         }
         .modal-overlay.visible { opacity: 1; visibility: visible; }
         .modal-content {
             background: #fff; padding: 2rem; border-radius: 12px; width: 90%;
             max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             transform: scale(0.9); transition: transform 0.3s;
-            max-height: 80vh; overflow-y: auto;
+            max-height: 90vh; overflow-y: auto;
+            margin: auto;
+            position: relative;
         }
         .modal-overlay.visible .modal-content { transform: scale(1); }
         .modal-header {
@@ -59,6 +63,10 @@
         #scan-result, #loading-indicator {
             margin-top: 1rem; padding: 1rem; background-color: #f0f4f8;
             border-radius: 8px; text-align: center;
+            display: none;
+        }
+        #scan-result.visible, #loading-indicator.visible {
+            display: block;
         }
         #scan-result h4 { margin-top: 0; }
         .nutrition-facts { margin-bottom: 1rem; text-align: left;}
@@ -234,6 +242,16 @@
         <div class="modal-content">
             <div class="modal-header"><h3>Analyze Food Image</h3><button class="close-modal-btn">&times;</button></div>
             <div id="camera-view"><video id="camera-feed" playsinline autoplay muted></video><canvas id="image-canvas"></canvas><div class="scanner-controls"><button id="capture-photo-btn" class="scanner-btn capture-btn"><i class="fa-solid fa-camera"></i> Capture</button><button id="switch-to-upload-btn" class="scanner-btn switch-view-btn"><i class="fa-solid fa-upload"></i> Use Upload</button></div></div>
+            <div id="upload-view" style="display: none;">
+                <img id="image-preview" src="https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image" alt="Image preview" crossorigin="anonymous"/>
+                <div class="scanner-controls">
+                     <input type="file" id="image-uploader" accept="image/*" style="display:none;">
+                     <label for="image-uploader" class="scanner-btn"><i class="fa-solid fa-file-image"></i> Select Image</label>
+                    <button id="switch-to-camera-btn" class="scanner-btn switch-view-btn"><i class="fa-solid fa-video"></i> Use Camera</button>
+                </div>
+            </div>
+            <div id="loading-indicator"></div>
+            <div id="scan-result"></div>
         </div>
     </div>
 
@@ -315,18 +333,6 @@
             </form>
         </div>
     </div>
-            <div id="upload-view" style="display: none;">
-                <img id="image-preview" src="https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image" alt="Image preview" crossorigin="anonymous"/>
-                <div class="scanner-controls">
-                     <input type="file" id="image-uploader" accept="image/*" style="display:none;">
-                     <label for="image-uploader" class="scanner-btn"><i class="fa-solid fa-file-image"></i> Select Image</label>
-                    <button id="switch-to-camera-btn" class="scanner-btn switch-view-btn"><i class="fa-solid fa-video"></i> Use Camera</button>
-                </div>
-            </div>
-
-            <div id="loading-indicator" style="display: none;"></div><div id="scan-result" style="display: none;"></div>
-        </div>
-    </div>
 
     <!-- Full Log Modal -->
     <div class="modal-overlay" id="log-modal">
@@ -356,6 +362,7 @@
         const scannerModal = document.getElementById('scanner-modal'), logModal = document.getElementById('log-modal'), cameraView = document.getElementById('camera-view'), uploadView = document.getElementById('upload-view'), cameraFeed = document.getElementById('camera-feed'), imageCanvas = document.getElementById('image-canvas'), capturePhotoBtn = document.getElementById('capture-photo-btn'), switchToUploadBtn = document.getElementById('switch-to-upload-btn'), switchToCameraBtn = document.getElementById('switch-to-camera-btn'), imageUploader = document.getElementById('image-uploader'), imagePreview = document.getElementById('image-preview'), loadingIndicator = document.getElementById('loading-indicator'), scanResultDiv = document.getElementById('scan-result'), fullLogContainer = document.getElementById('full-log-container');
         
         // --- GLOBAL STATE ---
+        let currentUser = null; // Store authenticated user
         let userProfile = null, foodModel = null, cameraStream = null, weeklyChart = null;
         let todaysLogs = [];
         let dailySummary = { calories: { consumed: 0, goal: 2000 }, protein: { consumed: 0, goal: 120 }, carbs: { consumed: 0, goal: 250 } };
@@ -374,9 +381,11 @@
         db.auth.onAuthStateChange(async (event, session) => { 
             if (session) { 
                 console.log('✅ User authenticated.');
+                currentUser = session.user; // Store user globally
                 await loadDashboardData(session.user); 
             } else { 
                 console.log('👤 No active session found. Dashboard will not load data.');
+                currentUser = null; // Clear user
                 greetingElement.textContent = "Please log in."; 
                 scanItemBtn.disabled = true;
                 quickAddBtn.disabled = true;
@@ -462,8 +471,9 @@
             if (EDAMAM_APP_ID === 'YOUR_EDAMAM_APP_ID' || EDAMAM_APP_KEY === 'YOUR_EDAMAM_APP_KEY') {
                 alert('Please configure your Edamam API credentials in the script first.'); return;
             }
-            loadingIndicator.style.display = 'block'; loadingIndicator.textContent = '🤖 Analyzing image...';
-            scanResultDiv.style.display = 'none';
+            loadingIndicator.classList.add('visible');
+            loadingIndicator.textContent = '🤖 Analyzing image...';
+            scanResultDiv.classList.remove('visible');
             try {
                 if (!imageElement.src.startsWith('data:')) {
                     imageElement.crossOrigin = "anonymous";
@@ -477,7 +487,8 @@
                 } else { throw new Error('Could not identify food in the image.'); }
             } catch (error) {
                 console.error('Error during analysis:', error);
-                loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'block';
+                loadingIndicator.classList.remove('visible');
+                scanResultDiv.classList.add('visible');
                 if (error instanceof SecurityError || error.message.includes('Tainted canvases')) {
                      scanResultDiv.innerHTML = `<p>Error analyzing image due to security restrictions (CORS). Try uploading the image file instead.</p>`;
                 } else {
@@ -495,34 +506,54 @@
                     const food = data.parsed[0].food; const nutrients = food.nutrients;
                     displayNutritionInfo({ name: food.label, calories: nutrients.ENERC_KCAL || 0, protein: nutrients.PROCNT || 0, carbs: nutrients.CHOCDF || 0 });
                 } else { throw new Error(`No nutritional data found for "${foodName}"`); }
-            } catch (error) { console.error('Nutrition Fetch Error:', error); scanResultDiv.innerHTML = `<p>${error.message}. You can still add it manually.</p>`;
-            } finally { loadingIndicator.style.display = 'none'; scanResultDiv.style.display = 'block'; }
+            } catch (error) { 
+                console.error('Nutrition Fetch Error:', error); 
+                loadingIndicator.classList.remove('visible');
+                scanResultDiv.classList.add('visible');
+                scanResultDiv.innerHTML = `<p>${error.message}. You can still add it manually.</p>`;
+            }
         }
 
         function displayNutritionInfo(product) {
+            console.log('🔵 displayNutritionInfo called with:', product);
+            loadingIndicator.classList.remove('visible');
+            scanResultDiv.classList.add('visible');
             scanResultDiv.innerHTML = `<h4>${product.name}</h4><div class="nutrition-facts"><p><strong>Nutrition per serving (approx. 100g):</strong></p><p>Calories: ${product.calories.toFixed(0)} kcal</p><p>Protein: ${product.protein.toFixed(1)} g</p><p>Carbohydrates: ${product.carbs.toFixed(1)} g</p></div><button class="log-food-btn" id="log-scanned-item">Log This Item</button>`;
             
-            // Event Listener with robust try/catch/finally
+            // Event Listener with robust error handling
             document.getElementById('log-scanned-item').addEventListener('click', async () => {
+                console.log('🔵 Log button clicked!');
                 const logButton = document.getElementById('log-scanned-item');
-                if (!logButton) return; 
+                if (!logButton) {
+                    console.error('❌ Log button not found!');
+                    return; 
+                }
 
                 logButton.disabled = true; 
                 logButton.textContent = 'Logging...';
-                let success = false; 
+                console.log('🔵 Button state changed to "Logging..."');
+                
                 try {
-                    success = await logFoodItem(product); 
+                    console.log('🔵 Calling logFoodItem...');
+                    const success = await logFoodItem(product); 
+                    console.log('🔵 logFoodItem returned:', success);
+                    
                     if (success) {
-                        closeScannerModal(); 
+                        console.log('✅ Log successful, updating UI');
+                        logButton.textContent = '✓ Logged!';
+                        setTimeout(() => {
+                            closeScannerModal();
+                        }, 500);
+                    } else {
+                        console.log('⚠️ Log failed, resetting button');
+                        logButton.disabled = false;
+                        logButton.textContent = 'Log This Item';
                     }
                 } catch (error) {
-                    console.error("Unhandled error in log click handler:", error);
+                    console.error("❌ Unhandled error in log click handler:", error);
                     alert("An unexpected error occurred. Please try again.");
-                } finally {
-                    if (!success && logButton) { 
-                       logButton.disabled = false;
-                       logButton.textContent = 'Log This Item';
-                    }
+                    logButton.disabled = false;
+                    logButton.textContent = 'Log This Item';
                 }
             });
         }
@@ -538,8 +569,8 @@
             imagePreview.src = 'https://placehold.co/400x250/f0f4f8/ccc?text=Select+an+Image'; 
             imagePreview.crossOrigin = "anonymous"; 
             imageUploader.value = ''; 
-            loadingIndicator.style.display = 'none'; 
-            scanResultDiv.style.display = 'none'; 
+            loadingIndicator.classList.remove('visible');
+            scanResultDiv.classList.remove('visible');
             scanResultDiv.innerHTML = ''; 
         }
         function switchToUploadView() { cameraView.style.display = 'none'; uploadView.style.display = 'block'; stopCamera(); }
@@ -547,26 +578,25 @@
         
         // --- 6. DASHBOARD LOGIC AND RENDERING ---
         
-        // Log Food Item function (no changes needed from previous fix)
+        // Log Food Item function
         async function logFoodItem(item) { 
-            console.log('Attempting to log item:', item);
-            let user = null;
-            try {
-                 const { data: authData, error: authError } = await db.auth.getUser();
-                 if (authError || !authData?.user) {
-                    throw new Error(authError?.message || "User not logged in.");
-                 }
-                 user = authData.user;
-            } catch (error) {
-                 console.error("❌ Error fetching user:", error);
-                 alert("Could not verify user session. Please refresh and log in again.");
-                 return false; 
+            console.log('🔵 logFoodItem called with:', item);
+            
+            // Check if user is authenticated using global variable
+            if (!currentUser) {
+                console.error("❌ No authenticated user found in global state");
+                alert("You need to be logged in to log food items. Please log in first.");
+                return false;
             }
+            
+            console.log('✅ Using authenticated user:', currentUser.id);
             
             const name = item.name;
             const calories = Math.round(item.calories);
             const protein = Math.round(item.protein);
             const carbs = Math.round(item.carbs);
+
+            console.log('🔵 Processed data:', { name, calories, protein, carbs });
 
             if (!name || isNaN(calories) || isNaN(protein) || isNaN(carbs)) {
                 console.error('❌ Invalid food data. Aborting log.', {name, calories, protein, carbs});
@@ -574,17 +604,23 @@
                 return false;
             }
 
-            const foodToLog = { user_id: user.id, name, calories, protein, carbs };
-            console.log('✅ Data is valid. Sending insert request to Supabase:', foodToLog);
+            const foodToLog = { user_id: currentUser.id, name, calories, protein, carbs };
+            console.log('🔵 Attempting to insert to Supabase:', foodToLog);
 
             try { 
-                const { error } = await db.from('food_log').insert([foodToLog]); 
+                const { data, error } = await db.from('food_log').insert([foodToLog]); 
+                console.log('🔵 Supabase insert response:', { data, error });
+                
                 if (error) {
                     console.error("❌ Supabase insert error:", error); 
                     throw error; 
                 }
                 console.log('✅ Item logged successfully in Supabase.');
-                await loadDashboardData(user); 
+                
+                console.log('🔵 Reloading dashboard data...');
+                await loadDashboardData(currentUser); 
+                console.log('✅ Dashboard data reloaded.');
+                
                 return true; 
             } catch (error) { 
                 console.error("❌ Error during Supabase insert operation:", error); 
