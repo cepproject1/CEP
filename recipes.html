@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriDash | Healthy Recipes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="css/dashboard_style.css">
+    <style>
+        /* Recipe-specific styles */
+        .recipe-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .recipe-card {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .recipe-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .recipe-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
+        }
+
+        .recipe-content {
+            padding: 1.5rem;
+        }
+
+        .recipe-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+
+        .recipe-meta {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        .recipe-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: #7f8c8d;
+        }
+
+        .recipe-meta-item i {
+            color: #27ae60;
+        }
+
+        .recipe-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .recipe-tag {
+            background: #e8f5e9;
+            color: #27ae60;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .search-filter-bar {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #27ae60;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #7f8c8d;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #2c3e50;
+        }
+
+        .filter-btn:hover {
+            border-color: #27ae60;
+            color: #27ae60;
+        }
+
+        .filter-btn.active {
+            background: #27ae60;
+            border-color: #27ae60;
+            color: white;
+        }
+
+        /* Recipe Detail Modal */
+        .recipe-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .recipe-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .recipe-modal-content {
+            background: white;
+            max-width: 800px;
+            width: 100%;
+            border-radius: 1rem;
+            overflow: hidden;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .recipe-modal-header {
+            position: relative;
+            height: 300px;
+        }
+
+        .recipe-modal-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .recipe-modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .recipe-modal-body {
+            padding: 2rem;
+        }
+
+        .recipe-modal-title {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .recipe-actions {
+            display: flex;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-favorite {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .btn-favorite:hover {
+            background: #ffe0b2;
+        }
+
+        .btn-favorite.active {
+            background: #f57c00;
+            color: white;
+        }
+
+        .btn-log {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-log:hover {
+            background: #2ecc71;
+        }
+
+        .ingredients-section,
+        .instructions-section {
+            margin: 2rem 0;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ingredients-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .ingredients-list li {
+            padding: 0.5rem;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ingredients-list li:before {
+            content: "✓";
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .instructions-list {
+            list-style: none;
+            padding: 0;
+            counter-reset: step-counter;
+        }
+
+        .instructions-list li {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            counter-increment: step-counter;
+            position: relative;
+            padding-left: 3.5rem;
+        }
+
+        .instructions-list li:before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 1rem;
+            top: 1rem;
+            background: #27ae60;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: #7f8c8d;
+        }
+
+        .no-results i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .favorite-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .favorite-badge i {
+            color: #f57c00;
+        }
+
+        .favorite-badge.active i {
+            color: #f57c00;
+            font-weight: bold;
+        }
+
+        .nutrition-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .nutrition-item {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+
+        .nutrition-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #27ae60;
+        }
+
+        .nutrition-label {
+            font-size: 0.875rem;
+            color: #7f8c8d;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="aurora-background"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><i class="fa-solid fa-leaf logo-icon"></i><h2>NutriDash</h2></div>
+        <nav class="main-nav">
+            <a href="dashboard.html" class="nav-link"><i class="fa-solid fa-table-columns"></i><span>Dashboard</span></a>
+            <a href="analytics.html" class="nav-link"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></a>
+            <a href="recipes.html" class="active"><i class="fa-solid fa-book-open"></i><span>Recipes</span></a>
+            <a href="#" class="nav-link" onclick="alert('Coming soon!'); return false;"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="profile-container">
+                <img id="sidebar-avatar" src="https://i.pravatar.cc/50?img=3" alt="User profile">
+                <div class="profile-details">
+                    <span id="sidebar-username">User</span>
+                    <small>Pro Member</small>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content" id="main-content">
+        <header class="main-header">
+            <button id="sidebar-toggle" class="sidebar-toggle-btn"><i class="fa-solid fa-bars"></i></button>
+            <div>
+                <h1>Healthy Recipes</h1>
+                <p style="color: #7f8c8d; font-size: 1rem; margin-top: 0.5rem;">Discover nutritious and delicious meals</p>
+            </div>
+        </header>
+
+        <!-- Search and Filter Bar -->
+        <div class="search-filter-bar">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="recipe-search" placeholder="Search recipes...">
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="breakfast">Breakfast</button>
+                <button class="filter-btn" data-filter="lunch">Lunch</button>
+                <button class="filter-btn" data-filter="dinner">Dinner</button>
+                <button class="filter-btn" data-filter="snack">Snack</button>
+                <button class="filter-btn" data-filter="favorites">❤️ Favorites</button>
+            </div>
+        </div>
+
+        <!-- Recipe Grid -->
+        <div class="recipe-grid" id="recipe-grid">
+            <!-- Recipe cards will be dynamically inserted here -->
+        </div>
+
+        <!-- No Results Message -->
+        <div class="no-results" id="no-results" style="display: none;">
+            <i class="fas fa-search"></i>
+            <h3>No recipes found</h3>
+            <p>Try adjusting your search or filters</p>
+        </div>
+    </main>
+
+    <!-- Recipe Detail Modal -->
+    <div class="recipe-modal" id="recipe-modal">
+        <div class="recipe-modal-content">
+            <div class="recipe-modal-header">
+                <img id="modal-recipe-image" class="recipe-modal-image" src="" alt="">
+                <button class="recipe-modal-close" onclick="closeRecipeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="recipe-modal-body">
+                <h2 class="recipe-modal-title" id="modal-recipe-title"></h2>
+                
+                <div class="recipe-meta" id="modal-recipe-meta"></div>
+
+                <!-- Nutrition Info -->
+                <div class="nutrition-grid" id="modal-nutrition"></div>
+
+                <!-- Action Buttons -->
+                <div class="recipe-actions">
+                    <button class="action-btn btn-favorite" id="modal-favorite-btn" onclick="toggleFavorite()">
+                        <i class="fas fa-heart"></i>
+                        <span>Add to Favorites</span>
+                    </button>
+                    <button class="action-btn btn-log" onclick="logRecipe()">
+                        <i class="fas fa-plus"></i>
+                        <span>Log This Meal</span>
+                    </button>
+                </div>
+
+                <!-- Ingredients -->
+                <div class="ingredients-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-list"></i>
+                        Ingredients
+                    </h3>
+                    <ul class="ingredients-list" id="modal-ingredients"></ul>
+                </div>
+
+                <!-- Instructions -->
+                <div class="instructions-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-utensils"></i>
+                        Instructions
+                    </h3>
+                    <ol class="instructions-list" id="modal-instructions"></ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'nutriDash_foodLogs';
+        const FAVORITES_KEY = 'nutriDash_favoriteRecipes';
+
+        // Recipe database
+        const recipes = [
+            {
+                id: 1,
+                title: "Greek Yogurt Parfait",
+                category: "breakfast",
+                image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&h=300&fit=crop",
+                prepTime: 10,
+                servings: 1,
+                calories: 250,
+                protein: 20,
+                carbs: 30,
+                fat: 5,
+                ingredients: [
+                    "1 cup Greek yogurt",
+                    "1/2 cup mixed berries",
+                    "2 tbsp granola",
+                    "1 tsp honey",
+                    "1 tbsp chia seeds"
+                ],
+                instructions: [
+                    "Layer Greek yogurt in a glass or bowl",
+                    "Add a layer of mixed berries",
+                    "Sprinkle granola on top",
+                    "Drizzle with honey",
+                    "Finish with chia seeds for extra nutrition"
+                ],
+                tags: ["high-protein", "quick", "vegetarian"]
+            },
+            {
+                id: 2,
+                title: "Grilled Chicken Salad",
+                category: "lunch",
+                image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop",
+                prepTime: 25,
+                servings: 2,
+                calories: 350,
+                protein: 35,
+                carbs: 15,
+                fat: 18,
+                ingredients: [
+                    "2 chicken breasts",
+                    "4 cups mixed greens",
+                    "1 cup cherry tomatoes",
+                    "1/2 cucumber, sliced",
+                    "2 tbsp olive oil",
+                    "1 lemon, juiced",
+                    "Salt and pepper to taste"
+                ],
+                instructions: [
+                    "Season chicken breasts with salt and pepper",
+                    "Grill chicken for 6-7 minutes per side until fully cooked",
+                    "Let chicken rest for 5 minutes, then slice",
+                    "Combine mixed greens, tomatoes, and cucumber in a large bowl",
+                    "Top with sliced chicken",
+                    "Drizzle with olive oil and lemon juice",
+                    "Toss gently and serve"
+                ],
+                tags: ["high-protein", "low-carb", "gluten-free"]
+            },
+            {
+                id: 3,
+                title: "Salmon with Roasted Vegetables",
+                category: "dinner",
+                image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400&h=300&fit=crop",
+                prepTime: 35,
+                servings: 2,
+                calories: 450,
+                protein: 38,
+                carbs: 25,
+                fat: 22,
+                ingredients: [
+                    "2 salmon fillets (6 oz each)",
+                    "2 cups broccoli florets",
+                    "1 bell pepper, sliced",
+                    "1 zucchini, sliced",
+                    "2 tbsp olive oil",
+                    "2 cloves garlic, minced",
+                    "Lemon wedges",
+                    "Fresh herbs"
+                ],
+                instructions: [
+                    "Preheat oven to 400°F (200°C)",
+                    "Toss vegetables with 1 tbsp olive oil, garlic, salt and pepper",
+                    "Arrange vegetables on a baking sheet",
+                    "Season salmon with salt, pepper, and remaining olive oil",
+                    "Place salmon on the baking sheet with vegetables",
+                    "Roast for 15-18 minutes until salmon is cooked through",
+                    "Serve with lemon wedges and fresh herbs"
+                ],
+                tags: ["omega-3", "high-protein", "heart-healthy"]
+            },
+            {
+                id: 4,
+                title: "Protein Energy Balls",
+                category: "snack",
+                image: "https://plus.unsplash.com/premium_photo-1726217054282-a5807369fe4d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8ZW5lcmd5JTIwYmFsbHN8ZW58MHx8MHx8fDA%3D&fm=jpg&q=60&w=3000",
+                prepTime: 15,
+                servings: 12,
+                calories: 120,
+                protein: 5,
+                carbs: 15,
+                fat: 6,
+                ingredients: [
+                    "1 cup oats",
+                    "1/2 cup peanut butter",
+                    "1/3 cup honey",
+                    "1/4 cup protein powder",
+                    "2 tbsp chia seeds",
+                    "1/4 cup dark chocolate chips",
+                    "1 tsp vanilla extract"
+                ],
+                instructions: [
+                    "Mix all ingredients in a large bowl until well combined",
+                    "Refrigerate mixture for 30 minutes",
+                    "Roll into 12 equal-sized balls",
+                    "Store in refrigerator for up to 1 week",
+                    "Enjoy as a quick snack or pre-workout boost"
+                ],
+                tags: ["high-protein", "no-bake", "meal-prep"]
+            },
+            {
+                id: 5,
+                title: "Avocado Toast with Eggs",
+                category: "breakfast",
+                image: "https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?w=400&h=300&fit=crop",
+                prepTime: 15,
+                servings: 1,
+                calories: 380,
+                protein: 18,
+                carbs: 35,
+                fat: 20,
+                ingredients: [
+                    "2 slices whole grain bread",
+                    "1 ripe avocado",
+                    "2 eggs",
+                    "Cherry tomatoes",
+                    "Red pepper flakes",
+                    "Salt and pepper",
+                    "Olive oil"
+                ],
+                instructions: [
+                    "Toast the bread until golden brown",
+                    "Mash avocado with salt, pepper, and red pepper flakes",
+                    "Heat olive oil in a pan and cook eggs to your preference",
+                    "Spread mashed avocado on toast",
+                    "Top with cooked eggs and cherry tomatoes",
+                    "Season with additional salt, pepper, and herbs"
+                ],
+                tags: ["healthy-fats", "breakfast", "vegetarian"]
+            },
+            {
+                id: 6,
+                title: "Quinoa Buddha Bowl",
+                category: "lunch",
+                image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop",
+                prepTime: 30,
+                servings: 2,
+                calories: 420,
+                protein: 15,
+                carbs: 55,
+                fat: 16,
+                ingredients: [
+                    "1 cup quinoa, cooked",
+                    "1 cup chickpeas, roasted",
+                    "2 cups spinach",
+                    "1 sweet potato, cubed and roasted",
+                    "1/2 avocado, sliced",
+                    "2 tbsp tahini",
+                    "1 lemon, juiced",
+                    "Sesame seeds"
+                ],
+                instructions: [
+                    "Cook quinoa according to package instructions",
+                    "Roast chickpeas and sweet potato cubes at 400°F for 25 minutes",
+                    "Arrange quinoa, chickpeas, sweet potato, and spinach in bowls",
+                    "Top with avocado slices",
+                    "Mix tahini with lemon juice and water to make dressing",
+                    "Drizzle dressing over bowl and sprinkle with sesame seeds"
+                ],
+                tags: ["vegan", "plant-based", "high-fiber"]
+            },
+            {
+                id: 7,
+                title: "Turkey Meatballs with Zoodles",
+                category: "dinner",
+                image: "https://images.unsplash.com/photo-1551782450-a2132b4ba21d?w=400&h=300&fit=crop",
+                prepTime: 40,
+                servings: 3,
+                calories: 320,
+                protein: 32,
+                carbs: 18,
+                fat: 14,
+                ingredients: [
+                    "1 lb ground turkey",
+                    "1/4 cup breadcrumbs",
+                    "1 egg",
+                    "2 cloves garlic, minced",
+                    "3 zucchini, spiralized",
+                    "2 cups marinara sauce",
+                    "Fresh basil",
+                    "Parmesan cheese"
+                ],
+                instructions: [
+                    "Mix ground turkey, breadcrumbs, egg, garlic, salt and pepper",
+                    "Form into 12-15 meatballs",
+                    "Bake meatballs at 375°F for 20-25 minutes",
+                    "Heat marinara sauce in a pan",
+                    "Add cooked meatballs to sauce",
+                    "Sauté zucchini noodles for 2-3 minutes",
+                    "Serve meatballs and sauce over zoodles, topped with basil and parmesan"
+                ],
+                tags: ["low-carb", "high-protein", "family-friendly"]
+            },
+            {
+                id: 8,
+                title: "Hummus & Veggie Wrap",
+                category: "snack",
+                image: "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=400&h=300&fit=crop",
+                prepTime: 10,
+                servings: 1,
+                calories: 280,
+                protein: 12,
+                carbs: 38,
+                fat: 10,
+                ingredients: [
+                    "1 whole wheat tortilla",
+                    "1/4 cup hummus",
+                    "1/2 cup mixed greens",
+                    "1/4 cucumber, sliced",
+                    "1/4 bell pepper, sliced",
+                    "2 tbsp shredded carrots",
+                    "2 tbsp feta cheese"
+                ],
+                instructions: [
+                    "Warm tortilla slightly to make it easier to roll",
+                    "Spread hummus evenly over tortilla",
+                    "Layer greens, cucumber, bell pepper, and carrots",
+                    "Sprinkle with feta cheese",
+                    "Roll tightly and slice in half",
+                    "Serve immediately or wrap for later"
+                ],
+                tags: ["vegetarian", "quick", "portable"]
+            }
+        ];
+
+        let currentFilter = 'all';
+        let currentRecipe = null;
+        let favorites = [];
+
+        // Load favorites from localStorage
+        function loadFavorites() {
+            const stored = localStorage.getItem(FAVORITES_KEY);
+            favorites = stored ? JSON.parse(stored) : [];
+        }
+
+        // Save favorites to localStorage
+        function saveFavorites() {
+            localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+        }
+
+        // Toggle favorite status
+        function toggleFavorite(recipeId = null) {
+            const id = recipeId || currentRecipe.id;
+            const index = favorites.indexOf(id);
+            
+            if (index > -1) {
+                favorites.splice(index, 1);
+            } else {
+                favorites.push(id);
+            }
+            
+            saveFavorites();
+            renderRecipes();
+            
+            if (currentRecipe && currentRecipe.id === id) {
+                updateFavoriteButton();
+            }
+        }
+
+        // Update favorite button state
+        function updateFavoriteButton() {
+            const btn = document.getElementById('modal-favorite-btn');
+            const isFavorite = favorites.includes(currentRecipe.id);
+            
+            if (isFavorite) {
+                btn.classList.add('active');
+                btn.innerHTML = '<i class="fas fa-heart"></i><span>Remove from Favorites</span>';
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = '<i class="fas fa-heart"></i><span>Add to Favorites</span>';
+            }
+        }
+
+        // Filter and search recipes
+        function getFilteredRecipes() {
+            const searchTerm = document.getElementById('recipe-search').value.toLowerCase();
+            
+            let filtered = recipes;
+            
+            // Apply category filter
+            if (currentFilter === 'favorites') {
+                filtered = recipes.filter(r => favorites.includes(r.id));
+            } else if (currentFilter !== 'all') {
+                filtered = recipes.filter(r => r.category === currentFilter);
+            }
+            
+            // Apply search filter
+            if (searchTerm) {
+                filtered = filtered.filter(r => 
+                    r.title.toLowerCase().includes(searchTerm) ||
+                    r.tags.some(tag => tag.includes(searchTerm)) ||
+                    r.ingredients.some(ing => ing.toLowerCase().includes(searchTerm))
+                );
+            }
+            
+            return filtered;
+        }
+
+        // Render recipe cards
+        function renderRecipes() {
+            const grid = document.getElementById('recipe-grid');
+            const noResults = document.getElementById('no-results');
+            const filtered = getFilteredRecipes();
+            
+            if (filtered.length === 0) {
+                grid.style.display = 'none';
+                noResults.style.display = 'block';
+                return;
+            }
+            
+            grid.style.display = 'grid';
+            noResults.style.display = 'none';
+            
+            grid.innerHTML = filtered.map(recipe => {
+                const isFavorite = favorites.includes(recipe.id);
+                return `
+                    <div class="recipe-card" onclick="openRecipeModal(${recipe.id})">
+                        <div style="position: relative;">
+                            <img class="recipe-image" src="${recipe.image}" alt="${recipe.title}">
+                            <div class="favorite-badge ${isFavorite ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${recipe.id})">
+                                <i class="fas fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="recipe-content">
+                            <h3 class="recipe-title">${recipe.title}</h3>
+                            <div class="recipe-meta">
+                                <div class="recipe-meta-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>${recipe.prepTime} min</span>
+                                </div>
+                                <div class="recipe-meta-item">
+                                    <i class="fas fa-fire"></i>
+                                    <span>${recipe.calories} cal</span>
+                                </div>
+                                <div class="recipe-meta-item">
+                                    <i class="fas fa-users"></i>
+                                    <span>${recipe.servings} serving${recipe.servings > 1 ? 's' : ''}</span>
+                                </div>
+                            </div>
+                            <div class="recipe-tags">
+                                ${recipe.tags.map(tag => `<span class="recipe-tag">${tag}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Open recipe detail modal
+        function openRecipeModal(recipeId) {
+            currentRecipe = recipes.find(r => r.id === recipeId);
+            if (!currentRecipe) return;
+            
+            const modal = document.getElementById('recipe-modal');
+            
+            // Update modal content
+            document.getElementById('modal-recipe-image').src = currentRecipe.image;
+            document.getElementById('modal-recipe-title').textContent = currentRecipe.title;
+            
+            // Update meta info
+            document.getElementById('modal-recipe-meta').innerHTML = `
+                <div class="recipe-meta-item">
+                    <i class="fas fa-clock"></i>
+                    <span>${currentRecipe.prepTime} minutes</span>
+                </div>
+                <div class="recipe-meta-item">
+                    <i class="fas fa-users"></i>
+                    <span>${currentRecipe.servings} servings</span>
+                </div>
+                <div class="recipe-meta-item">
+                    <i class="fas fa-utensils"></i>
+                    <span>${currentRecipe.category}</span>
+                </div>
+            `;
+            
+            // Update nutrition info
+            document.getElementById('modal-nutrition').innerHTML = `
+                <div class="nutrition-item">
+                    <div class="nutrition-value">${currentRecipe.calories}</div>
+                    <div class="nutrition-label">Calories</div>
+                </div>
+                <div class="nutrition-item">
+                    <div class="nutrition-value">${currentRecipe.protein}g</div>
+                    <div class="nutrition-label">Protein</div>
+                </div>
+                <div class="nutrition-item">
+                    <div class="nutrition-value">${currentRecipe.carbs}g</div>
+                    <div class="nutrition-label">Carbs</div>
+                </div>
+                <div class="nutrition-item">
+                    <div class="nutrition-value">${currentRecipe.fat}g</div>
+                    <div class="nutrition-label">Fat</div>
+                </div>
+            `;
+            
+            // Update ingredients
+            document.getElementById('modal-ingredients').innerHTML = 
+                currentRecipe.ingredients.map(ing => `<li>${ing}</li>`).join('');
+            
+            // Update instructions
+            document.getElementById('modal-instructions').innerHTML = 
+                currentRecipe.instructions.map(inst => `<li>${inst}</li>`).join('');
+            
+            // Update favorite button
+            updateFavoriteButton();
+            
+            modal.classList.add('active');
+        }
+
+        // Close recipe modal
+        function closeRecipeModal() {
+            document.getElementById('recipe-modal').classList.remove('active');
+            currentRecipe = null;
+        }
+
+        // Log recipe to food log
+        function logRecipe() {
+            if (!currentRecipe) return;
+            
+            const foodToLog = {
+                name: currentRecipe.title,
+                calories: currentRecipe.calories,
+                protein: currentRecipe.protein,
+                carbs: currentRecipe.carbs,
+                created_at: new Date().toISOString()
+            };
+            
+            // Load existing logs
+            const stored = localStorage.getItem(STORAGE_KEY);
+            const allLogs = stored ? JSON.parse(stored) : [];
+            
+            // Add new log
+            allLogs.push(foodToLog);
+            
+            // Save back to localStorage
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(allLogs));
+            
+            // Show success message
+            alert(`✓ ${currentRecipe.title} has been logged to your dashboard!`);
+            closeRecipeModal();
+        }
+
+        // Handle filter button clicks
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderRecipes();
+            });
+        });
+
+        // Handle search input
+        document.getElementById('recipe-search').addEventListener('input', () => {
+            renderRecipes();
+        });
+
+        // Handle sidebar toggle
+        document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
+            document.body.classList.toggle('sidebar-collapsed');
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('recipe-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'recipe-modal') {
+                closeRecipeModal();
+            }
+        });
+
+        // Initialize page
+        loadFavorites();
+        renderRecipes();
+    </script>
+</body>
+</html>

@@ -213,10 +213,10 @@
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header"><i class="fa-solid fa-leaf logo-icon"></i><h2>NutriDash</h2></div>
         <nav class="main-nav">
-            <a href="#" class="active"><i class="fa-solid fa-table-columns"></i><span>Dashboard</span></a>
+            <a href="dashboard.html" class="active"><i class="fa-solid fa-table-columns"></i><span>Dashboard</span></a>
             <a href="analytics.html" class="nav-link"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></a>
-            <a href="#" class="nav-link"><i class="fa-solid fa-book-open"></i><span>Recipes</span></a>
-            <a href="#" class="nav-link"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+            <a href="recipes.html" class="nav-link"><i class="fa-solid fa-book-open"></i><span>Recipes</span></a>
+            <a href="#" class="nav-link" onclick="alert('Coming soon!'); return false;"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
         </nav>
         <div class="sidebar-footer">
             <div class="profile-container">
@@ -772,7 +772,13 @@
                 reader.readAsDataURL(imageUploader.files[0]);
             }
         });
+        // Add alert to coming soon features (exclude analytics and recipes)
         document.querySelectorAll('.nav-link').forEach(link => {
+            const href = link.getAttribute('href');
+            // Skip analytics and recipes links - let them navigate normally
+            if (href === 'analytics.html' || href === 'recipes.html') {
+                return;
+            }
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 alert('This feature is coming soon!');

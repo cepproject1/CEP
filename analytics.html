@@ -6,9 +6,7 @@
     <title>Personalized Food Analytics - Trend Focus</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/analytics.js"></script>
     <!-- Configure Tailwind to use Inter font and custom colors -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
@@ -61,6 +59,16 @@
 <body class="bg-white min-h-screen text-gray-800">
 
     <div id="app" class="p-4 sm:p-8 max-w-7xl mx-auto">
+        <!-- Back to Dashboard Link -->
+        <div class="mb-4">
+            <a href="dashboard.html" class="inline-flex items-center text-theme-primary hover:text-theme-secondary transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Dashboard
+            </a>
+        </div>
+        
         <header class="mb-8">
             <!-- Header Text: text-theme-title -->
             <h1 class="text-3xl sm:text-4xl font-bold text-theme-title flex items-center">
@@ -138,6 +146,7 @@
 
     <script>
         // --- CONSTANTS ---
+        const STORAGE_KEY = 'nutriDash_foodLogs';
         const MACRO_COLORS = ['#047857', '#0D9488', '#F59E0B']; // Emerald-700 (Protein), Teal-600 (Carbs), Amber-500 (Fat/Calories)
         const PRIMARY_ACCENT = '#059669'; 
         // Slate-500 for high contrast goal tracking against all macro colors
@@ -166,7 +175,61 @@
             fiber: { target: GOALS.daily_fiber, color: '#10B981', unit: 'g', label: 'Fiber' } 
         };
         
-        // --- MOCK DATA (unchanged) ---
+        // --- LOAD DATA FROM LOCAL STORAGE ---
+        function loadFromLocalStorage() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (!stored) return [];
+            
+            try {
+                return JSON.parse(stored);
+            } catch (error) {
+                console.error('Error loading from localStorage:', error);
+                return [];
+            }
+        }
+
+        // Group logs by date and calculate daily totals
+        function groupLogsByDate(logs, days) {
+            const dateMap = new Map();
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - days + 1);
+
+            // Initialize map with all dates in range
+            for (let i = 0; i < days; i++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i);
+                const dateStr = date.toISOString().slice(0, 10);
+                dateMap.set(dateStr, {
+                    date: days === 7 ? date.toLocaleDateString('en-US', { weekday: 'short' }) : `Day ${i + 1}`,
+                    calories: 0,
+                    protein: 0,
+                    fat: 0,
+                    carbs: 0,
+                    sodium: 0,
+                    fiber: 0
+                });
+            }
+
+            // Aggregate logs by date
+            logs.forEach(log => {
+                const logDate = log.created_at.slice(0, 10);
+                if (dateMap.has(logDate)) {
+                    const day = dateMap.get(logDate);
+                    day.calories += log.calories || 0;
+                    day.protein += log.protein || 0;
+                    day.carbs += log.carbs || 0;
+                    day.fat += log.fat || 0;
+                    // Simulate sodium and fiber (would come from real data)
+                    day.sodium += Math.round((log.calories || 0) * 1.2);
+                    day.fiber += Math.round((log.protein || 0) * 0.3);
+                }
+            });
+
+            return Array.from(dateMap.values());
+        }
+
+        // --- MOCK DATA (fallback if no real data) ---
         const mockDailyData = [
             { date: 'Mon', calories: 2100, protein: 75, fat: 80, carbs: 230, sodium: 3200, fiber: 22 },
             { date: 'Tue', calories: 1950, protein: 90, fat: 65, carbs: 200, sodium: 2800, fiber: 30 },
@@ -177,15 +240,31 @@
             { date: 'Sun', calories: 2050, protein: 80, fat: 60, carbs: 220, sodium: 2700, fiber: 28 },
         ];
         
-        let currentData = mockDailyData;
+        let currentData = [];
         let currentTimeframe = '7-day';
         let currentTrendView = 'calories'; 
+
+        // Initialize data on load
+        function initializeData() {
+            const allLogs = loadFromLocalStorage();
+            
+            if (allLogs.length === 0) {
+                console.log('No data found, using mock data');
+                currentData = mockDailyData;
+            } else {
+                console.log(`Loaded ${allLogs.length} logs from localStorage`);
+                currentData = groupLogsByDate(allLogs, 7);
+            }
+        } 
 
         // --- UTILITY FUNCTIONS ---
 
         function simulateLongerData(timeframe) {
             const days = parseInt(timeframe.split('-')[0]);
-            if (days === 7) return mockDailyData;
+            if (days === 7) {
+                const allLogs = loadFromLocalStorage();
+                return allLogs.length > 0 ? groupLogsByDate(allLogs, 7) : mockDailyData;
+            }
 
             const sevenDayAverage = mockDailyData.reduce((acc, day) => ({
                 calories: acc.calories + day.calories,
@@ -703,6 +782,9 @@
 
         // Initialize on load
         window.onload = () => {
+            // Initialize data from localStorage
+            initializeData();
+            
             // Re-render charts on resize to ensure full-width responsiveness
             window.addEventListener('resize', () => {
                 refreshDashboard(currentData, currentTimeframe);
